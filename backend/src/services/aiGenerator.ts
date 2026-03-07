@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -15,9 +15,104 @@ async function test( req, res) {
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite-preview",
     contents: "Explain how AI works in a few words 30 to be exact, amaze me",
+    config: {
+      temperature: 0.7,
+      maxOutputTokens: 30000,
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.LOW,
+      },
+    }
   });
   console.log(response.text);
   res.send(response.text);
 }
 
-export {test}
+
+export async function generateReadme(
+  files: any,
+  analysis: any,
+  existingReadme: string | null,
+  type: 'initial' | 'update'
+): Promise<string> {
+  
+
+  const filesSummary = files.map((f: any) => `
+### ${f.path}
+\`\`\`
+${f.content}${f.truncated ? '\n... (truncated)' : ''}
+\`\`\`
+`).join('\n');
+
+  let prompt = '';
+  
+  if (type === 'initial' || !existingReadme) {
+    // First time - generate from scratch
+    prompt = `You are a technical documentation expert. Generate a comprehensive README.md for this repository.
+
+REPOSITORY STRUCTURE:
+${JSON.stringify(analysis.structure, null, 2)}
+
+TECH STACK:
+${JSON.stringify(analysis.metadata.techStack, null, 2)}
+
+CODE FILES:
+${filesSummary}
+
+Generate a professional README with:
+1. Project Title & Description
+2. Features
+3. Tech Stack
+4. Installation
+5. Usage
+6. Project Structure
+7. Contributing
+8. License
+
+Format as clean markdown.`;
+
+  } else {
+    // Update - preserve custom content, update technical sections
+    prompt = `You are a technical documentation expert. Update this existing README based on recent code changes.
+
+EXISTING README:
+${existingReadme}
+
+RECENT CODE CHANGES:
+${filesSummary}
+
+UPDATED TECH STACK:
+${JSON.stringify(analysis.metadata.techStack, null, 2)}
+
+Instructions:
+1. Preserve all custom content (descriptions, examples, badges, etc.)
+2. Update technical sections (Tech Stack, Installation, Project Structure) if needed
+3. Keep the same tone and style as the original
+4. Only modify sections that are outdated based on code changes
+5. If no meaningful changes needed, return the original README unchanged
+
+Return the updated README in markdown format.`;
+  }
+
+  let response=null;
+  try {
+    response = await ai.models.generateContent({
+    model: "gemini-3.1-flash-lite-preview",
+    contents: prompt,
+    config: {
+      temperature: 0.7,
+      maxOutputTokens: 30000,
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.LOW,
+      },
+    }
+  });
+}
+catch (err){
+  console.log("Error in generating response from gemini", err)
+}
+if(response != null && response.text != undefined) return response.text;
+return 'null';
+  // return (response != null) ? response.text : 'null';
+}
+
+export {test};
