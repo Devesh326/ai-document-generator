@@ -406,8 +406,6 @@ export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; 
   /\.github\/workflows\/.+\.yml$/,
 
   // Config files
-  /\.env$/,
-  /\.env\..+/,
   /config\/.+\.(js|ts|json|yaml|yml)$/,
 
 ];
