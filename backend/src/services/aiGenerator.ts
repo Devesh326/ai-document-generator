@@ -49,6 +49,8 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
     // First time - generate from scratch
     prompt = `You are a technical documentation expert. Generate a comprehensive README.md for this repository.
 
+    IMPORTANT: Output ONLY the README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the README" or "Based on the code". Start directly with the markdown content (# Title).
+
 REPOSITORY STRUCTURE:
 ${JSON.stringify(analysis.structure, null, 2)}
 
