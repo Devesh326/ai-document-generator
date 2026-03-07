@@ -21,7 +21,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "ioredis": "^5.10.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "octokit-plugin-create-pull-request": "^6.0.1"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
