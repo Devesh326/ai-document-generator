@@ -70,10 +70,10 @@ function categorizeStructure(tree: GitHubTreeItem[], isMonorepo: boolean) {
     shared: [] as string[]
   };
   
-  if (!isMonorepo) {
-    structure.backend.push('');
-    return structure;
-  }
+  // if (!isMonorepo) {
+  //   structure.backend.push('');
+  //   return structure;
+  // }
   
   const topLevelFolders = tree
     .filter(t => t.type === 'tree')
@@ -336,4 +336,90 @@ function selectFiles(
   
   const unique = [...new Set(selected)];
   return unique.slice(0, maxFiles);
+}
+
+export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; value: boolean} {
+  
+  // Skip if only these files changed
+  const trivialPatterns = [
+    /\.md$/,           // Markdown files
+    /\.txt$/,          // Text files
+    /LICENSE/,         // License
+    /\.github\//,      // GitHub configs
+    /\.vscode\//,      // Editor configs
+    /\.idea\//,        // IDE configs
+    /\.gitignore/,     // Git ignore
+  ];
+  
+  const meaningfulChanges = changedFiles.filter(file => 
+    !trivialPatterns.some(pattern => pattern.test(file))
+  );
+  
+  if (meaningfulChanges.length === 0) {
+    console.log('⏭️  Skipping: No meaningful code changes');
+    return {files: [], value: false};
+  }
+  
+  // Generate if:
+  // - package.json changed (tech stack)
+  // - New files added in key folders (routes, services, models)
+  // - Entry points modified (app.js, index.ts)
+  // - Dockerfile or requirements.txt changed (deployment)
+  // - go.mod changed (Go projects)
+  // - New folders are added
+  
+  const significantPatterns = [
+
+  // Dependency / package managers
+  /package\.json$/,
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /pnpm-lock\.yaml$/,
+  /requirements\.txt$/,
+  /Pipfile$/,
+  /Pipfile\.lock$/,
+  /go\.mod$/,
+  /go\.sum$/,
+  /pom\.xml$/,
+  /build\.gradle$/,
+  /settings\.gradle$/,
+  /Gemfile$/,
+  /Gemfile\.lock$/,
+  /composer\.json$/,
+  /composer\.lock$/,
+  /Cargo\.toml$/,
+  /Cargo\.lock$/,
+
+  // Entry point files
+  /(index|app|server|main)\.(js|ts|py|go|java|rb)$/,
+
+  // Core backend directories
+  /(routes|services|models|controllers|handlers|middleware)\/.+\.(js|ts|py|go|java|rb)$/,
+
+  // Source directories
+  /(src|cmd|internal|pkg|lib|app)\/.+\.(js|ts|py|go|java|rb)$/,
+
+  // Infrastructure / container
+  /Dockerfile$/,
+  /docker-compose\.yml$/,
+  /docker-compose\.yaml$/,
+  /\.github\/workflows\/.+\.yml$/,
+
+  // Config files
+  /\.env$/,
+  /\.env\..+/,
+  /config\/.+\.(js|ts|json|yaml|yml)$/,
+
+];
+  
+  const hasSignificantChanges = meaningfulChanges.filter(file =>
+    significantPatterns.some(pattern => pattern.test(file))
+  );
+  
+  if (hasSignificantChanges.length === 0) {
+    console.log('⏭️  Skipping: Changes not significant enough');
+    return {files: [], value: false};
+  }
+  
+  return {files: hasSignificantChanges, value: true};
 }
