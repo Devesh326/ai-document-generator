@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.44.0",
+    "@octokit/app": "^16.1.2",
     "@octokit/core": "^6.1.0",
     "@prisma/client": "^5.8.0",
     "bull": "^4.16.5",
