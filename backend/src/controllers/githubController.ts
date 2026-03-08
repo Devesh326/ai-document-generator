@@ -205,7 +205,7 @@ const githubWebhookHandler = async (req: any, res: any) => {
 }
 
 
-const createPullReq = async (octokit: any, owner: string, repoName: string, readme: string, ref: string) : any => { 
+const createPullReq = async (octokit: any, owner: string, repoName: string, readme: string, ref: string, versionId: number) : Promise<any> => { 
   try {
     // const pr = await octokit.request(`POST /repos/${owner}/${repoName}/pulls`, {
     //   owner,
@@ -230,7 +230,7 @@ const createPullReq = async (octokit: any, owner: string, repoName: string, read
         files: {
           "README.md": readme
         },
-        commit: "docs: add AI generated README"
+        commit: `docs: add AI generated README v${versionId}`
       }
     ]
   });
