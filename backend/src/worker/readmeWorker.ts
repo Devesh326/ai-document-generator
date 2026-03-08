@@ -2,7 +2,7 @@
 
 import {docQueue} from '../queues/docQueue.js';
 import prisma from '../models/prisma.js';
-import { createPullReq, fetchFileContent, githubRepoTopLevelGet } from '../controllers/githubController.js';
+import { createPullReq, extractImports, fetchFileContent, generateMermaidGraph, githubRepoTopLevelGet } from '../controllers/githubController.js';
 import { shouldGenerateReadme } from '../services/analyzer.js';
 import { generateReadme } from '../services/aiGenerator.js';
 import fs from 'fs';
@@ -208,8 +208,47 @@ console.log("commits:", commits);
   console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
   
 
+  const normalizePath = (fromPath: string, importPath: string): string => {
+  // Skip node_modules
+  if (!importPath.startsWith('.')) {
+    return importPath;
+  }
+  
+  // Resolve relative path
+  const fromDir = fromPath.split('/').slice(0, -1).join('/');
+  const parts = [...fromDir.split('/'), ...importPath.split('/')];
+  const resolved: string[] = [];
+  
+  for (const part of parts) {
+    if (part === '..') {
+      resolved.pop();
+    } else if (part !== '.') {
+      resolved.push(part);
+    }
+  }
+  
+  return resolved.join('/');
+};
 
-// /*
+
+  const graph : any[] = [];
+for (const file of filesWithContent) {
+  const deps = extractImports(file.content);
+  
+  deps.forEach(dep => {
+    graph.push({
+      from: file.path,
+      to: normalizePath(file.path, dep)
+    });
+  });
+}
+
+console.log("Dependency graph:", JSON.stringify(graph, null, 2));
+
+const mermaidDiagram = generateMermaidGraph(graph);
+console.log(mermaidDiagram);
+
+/*
 
     // 7. Check if README already exists
     
@@ -219,6 +258,7 @@ console.log("commits:", commits);
       filesWithContent,
       analysis,
       existingReadmeContent,  // Pass existing README to preserve custom content
+      graph,
       generationType
     );
     // const readme = "testing readme generation";
@@ -235,10 +275,10 @@ console.log("commits:", commits);
 }
 
 
-// if (existingReadmeContent && normalize(existingReadmeContent) === normalize(readme)) {
-//   console.log("README unchanged — skipping PR");
-//   return;
-// }
+if (existingReadmeContent && normalize(existingReadmeContent) === normalize(readme)) {
+  console.log("README unchanged — skipping PR");
+  return;
+}
     
     
 //     // 9. Create PR
@@ -276,7 +316,7 @@ console.log("commits:", commits);
     console.log('✅ Done!\n');
 
 
-    // */
+    */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);
