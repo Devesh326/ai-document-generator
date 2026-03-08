@@ -45,8 +45,8 @@ export async function generateReadme(
   // const mermaidDiagram = dependencyGraph.length < 50 
   //   ? generateMermaidGraph(dependencyGraph)
   //   : '';
-  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
-  const mermaidDiagram = '';
+  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  // const mermaidDiagram = '';
 
   const filesSummary = files.map((f: any) => `
 ### ${f.path}
