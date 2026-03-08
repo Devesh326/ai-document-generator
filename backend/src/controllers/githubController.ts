@@ -246,4 +246,62 @@ console.log("PR link:", pr?.data?.html_url);
   return null;
 }
 
-export { githubRepoGet, repoTreeGet, repositoryGet, githubRepoTopLevelGet, repoPathGet, githubWebhookHandler, fetchFileContent, createPullReq };
+const extractImports = (content: string): string[] => {
+  const imports: string[] = [];
+  
+  // Remove comments first (they might contain fake imports)
+  const withoutComments = content
+    .replace(/\/\*[\s\S]*?\*\//g, '')  // Remove /* */ comments
+    .replace(/\/\/.*/g, '');            // Remove // comments
+  
+  // ES6 imports (all variations)
+  const importPatterns = [
+    // import x from 'path'
+    /import\s+[\w{},*\s]+\s+from\s+['"]([^'"]+)['"]/g,
+    // import 'path' (side-effect import)
+    /import\s+['"]([^'"]+)['"]/g,
+  ];
+  
+  // CommonJS require
+  const requireRegex = /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  
+  // Dynamic import
+  const dynamicImportRegex = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  
+  let match;
+  
+  // Extract from all patterns
+  [...importPatterns, requireRegex, dynamicImportRegex].forEach(regex => {
+    while ((match = regex.exec(withoutComments)) !== null) {
+      imports.push(match[1]);
+    }
+  });
+  
+  // Deduplicate
+  return [...new Set(imports)];
+};
+
+
+//service layer:
+const generateMermaidGraph = (graph: any[]): string => {
+  let mermaid = 'graph TD\n';
+  
+  // Deduplicate edges
+  const edges = new Set(
+    graph.map(edge => `${edge.from} --> ${edge.to}`)
+  );
+  
+  edges.forEach(edge => {
+    // Clean up file paths for display
+    const cleanEdge = edge
+      .replace(/\//g, '_')  // Replace / with _
+      .replace(/\.(js|ts|tsx|jsx)/g, '');  // Remove extensions
+    
+    mermaid += `  ${cleanEdge}\n`;
+  });
+  
+  return mermaid;
+};
+
+
+export { githubRepoGet, repoTreeGet, repositoryGet, githubRepoTopLevelGet, repoPathGet, githubWebhookHandler, fetchFileContent, createPullReq, extractImports, generateMermaidGraph };
