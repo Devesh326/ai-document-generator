@@ -45,7 +45,8 @@ export async function generateReadme(
   // const mermaidDiagram = dependencyGraph.length < 50 
   //   ? generateMermaidGraph(dependencyGraph)
   //   : '';
-  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  const mermaidDiagram = '';
 
   const filesSummary = files.map((f: any) => `
 ### ${f.path}
@@ -120,6 +121,8 @@ Format as clean markdown.`;
 
     Update the README only where necessary.
 
+    This is an incremental documentation update, not a full rewrite.
+
 IMPORTANT: Output ONLY the updated README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the updated README". Start directly with the markdown content (# Title).
 
 Rules:
@@ -138,10 +141,24 @@ Rules:
 - If no meaningful changes needed, return the original README unchanged
 - Keep the same tone and style as the original
 
+
+Architecture Update Rules:
+
+- Treat the architecture in the existing README as the baseline.
+- Only modify the architecture if the code changes clearly introduce or remove components.
+- If the architecture cannot be confidently updated using the provided files, keep the existing architecture unchanged.
+- Do NOT infer new architecture from incomplete file context.
+
 EXISTING README:
 ${existingReadme}
 
-RECENT CODE CHANGES:
+
+RECENT CODE CHANGES (PARTIAL CONTEXT):
+
+The following files were modified recently. They represent only a subset of the repository.
+
+Do NOT recompute the entire architecture from these files.
+Use them only to update sections that are clearly affected.
 ${filesSummary}
 
 UPDATED TECH STACK:
