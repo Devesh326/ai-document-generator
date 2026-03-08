@@ -165,7 +165,7 @@ console.log("commits:", commits);
         for (const filePath of analysis.selectedFiles) {
             
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            if (content) {
+            if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
                 filesWithContent.push({
                 path: filePath,
                 // content: content.split('\n').slice(0,200).join('\n'),
@@ -204,7 +204,7 @@ console.log("commits:", commits);
     
     for (const filePath of shouldGenerate.files) {
         const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        if (content) {
+        if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
             filesWithContent.push({
                 path: filePath,
                 content: content.substring(0, 2000),
@@ -241,6 +241,8 @@ console.log("commits:", commits);
 };
 
 
+filesWithContent.concat(routerSummary);
+JSON.stringify(filesWithContent)
   const graph : any[] = [];
 for (const file of filesWithContent) {
   const deps = extractImports(file.content);
@@ -258,7 +260,7 @@ console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 const mermaidDiagram = generateMermaidGraph(graph);
 console.log(mermaidDiagram);
 
-// /*
+/*
 
     // 7. Check if README already exists
     
@@ -276,6 +278,7 @@ console.log(mermaidDiagram);
     
     console.log('✅ README generated');
 
+    // console.log(" Generated README content:\n", readme);
 
     function normalize(content: string) {
   return content
@@ -326,7 +329,7 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     console.log('✅ Done!\n');
 
 
-    // */
+    */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);
