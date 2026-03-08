@@ -165,7 +165,7 @@ console.log("commits:", commits);
         for (const filePath of analysis.selectedFiles) {
             
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
+            if (content) {
                 filesWithContent.push({
                 path: filePath,
                 // content: content.split('\n').slice(0,200).join('\n'),
@@ -204,7 +204,7 @@ console.log("commits:", commits);
     
     for (const filePath of shouldGenerate.files) {
         const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
+        if (content) {
             filesWithContent.push({
                 path: filePath,
                 content: content.substring(0, 2000),
@@ -276,7 +276,6 @@ console.log(mermaidDiagram);
     
     console.log('✅ README generated');
 
-    console.log(" Generated README content:\n", readme);
 
     function normalize(content: string) {
   return content
