@@ -148,7 +148,7 @@ console.log("commits:", commits);
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
             
             // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
-            if(filePath.contains('routes/') || filePath.contains('endpoints/') || filePath.contains('handlers/') || filePath.contains('api/')){
+            if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/')){
                 console.log(`=====Content for ${filePath} ======`,content);
                 if(content){
                     filesWithContent.push({
