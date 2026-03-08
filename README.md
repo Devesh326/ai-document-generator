@@ -14,15 +14,14 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 
 *   **Backend:** TypeScript, Express.js
 *   **AI/LLM:** Google GenAI (Gemini 3.1 Flash)
-*   **Database & ORM:** Prisma with PostgreSQL (or compatible)
-*   **Queueing:** Redis, Bull
+*   **ORM:** Prisma
+*   **Database:** Redis
 *   **GitHub Integration:** Octokit
 
 ## Prerequisites
 
 *   Node.js (v20+)
 *   Redis server
-*   PostgreSQL database
 *   Gemini API Key
 
 ## Installation
@@ -58,47 +57,7 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
         ```bash
         npm run dev
         ```
-    *   Start the background worker for document generation:
+    *   Start the background worker for documentation generation:
         ```bash
         npm run worker
         ```
-
-## Usage
-
-The application exposes REST endpoints to trigger repository analysis and documentation generation:
-
-*   **Analyze Repository:** `GET /repository?owner=<owner>&repo=<repo>`
-    Triggers an analysis of the specified GitHub repository.
-*   **GitHub Webhook:** `POST /webhook`
-    Endpoint configured for GitHub to send events. Processes repository changes automatically.
-*   **Path Analysis:** `GET /path`
-    Returns the file structure of a specific repository.
-
-## Project Structure
-
-```text
-backend/
-├── src/
-│   ├── controllers/    # Request handlers for GitHub webhooks and API routes
-│   ├── models/         # Prisma schemas and interface definitions
-│   ├── queues/         # Bull queue configurations for background jobs
-│   ├── routes/         # Express route definitions
-│   ├── services/       # Core logic (AI generation, repo analysis, file selection)
-│   └── worker/         # Background worker logic for processing queues
-├── package.json        # Dependencies and scripts
-└── prisma/             # Database schema and migrations
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
-3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
-4.  Push to the branch (`git push origin feature/amazing-feature`).
-5.  Open a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.
