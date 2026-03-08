@@ -144,8 +144,21 @@ console.log("commits:", commits);
         console.log('📥 Fetching file contents...');
         
         for (const filePath of analysis.selectedFiles) {
-            const content = await fetchFileContent(octokit, owner, repoName, filePath);
-            if (content) {
+            // if path is routes, endpoints, handlers, or api, then we put entire content to it.
+            let content = await fetchFileContent(octokit, owner, repoName, filePath);
+            
+            if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+                if(content){
+                    filesWithContent.push({
+                        path: existingReadme,
+                        content: content,
+                        truncated: false
+                    });
+
+                    console.log(`=====Content for ${filePath} ======`,content);
+                }
+            }
+            else if (content) {
                 filesWithContent.push({
                 path: filePath,
                 content: content.split('\n').slice(0,200).join('\n'),
@@ -245,10 +258,10 @@ for (const file of filesWithContent) {
 
 console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 
-// const mermaidDiagram = generateMermaidGraph(graph);
-// console.log(mermaidDiagram);
+const mermaidDiagram = generateMermaidGraph(graph);
+console.log(mermaidDiagram);
 
-// /*
+/*
 
     // 7. Check if README already exists
     
@@ -316,7 +329,7 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     console.log('✅ Done!\n');
 
 
-    // */
+    */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);
