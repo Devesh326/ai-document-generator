@@ -284,24 +284,102 @@ const extractImports = (content: string): string[] => {
 
 //service layer:
 const generateMermaidGraph = (graph: any[]): string => {
-  let mermaid = 'graph TD\n';
+  if (graph.length === 0) return '';
   
-  // Deduplicate edges
-  const edges = new Set(
-    graph.map(edge => `${edge.from} --> ${edge.to}`)
-  );
+  // Group by top-level folders
+  const byFolder: Record<string, Set<string>> = {};
   
-  edges.forEach(edge => {
-    // Clean up file paths for display
-    const cleanEdge = edge
-      .replace(/\//g, '_')  // Replace / with _
-      .replace(/\.(js|ts|tsx|jsx)/g, '');  // Remove extensions
+  graph.forEach(({ from, to }) => {
+    // Only include internal dependencies (starting with ./)
+    if (to.startsWith('@') || !to.includes('/')) return;
     
-    mermaid += `  ${cleanEdge}\n`;
+    const folder = from.split('/')[0] || 'root';
+    if (!byFolder[folder]) byFolder[folder] = new Set();
+    
+    byFolder[folder].add(`${simplifyPath(from)} --> ${simplifyPath(to)}`);
   });
+  
+  let mermaid = '```mermaid\ngraph LR\n';
+  
+  Object.entries(byFolder).forEach(([folder, edges]) => {
+    mermaid += `  subgraph ${folder}\n`;
+    edges.forEach(edge => {
+      mermaid += `    ${edge}\n`;
+    });
+    mermaid += '  end\n';
+  });
+  
+  mermaid += '```';
   
   return mermaid;
 };
 
+function simplifyPath(path: string): string {
+  return path
+    .replace(/\.(js|ts|tsx|jsx)$/, '')  // Remove extension
+    .replace(/\//g, '_')                // Replace / with _
+    .replace(/[^a-zA-Z0-9_]/g, '');     // Remove special chars
+}
 
-export { githubRepoGet, repoTreeGet, repositoryGet, githubRepoTopLevelGet, repoPathGet, githubWebhookHandler, fetchFileContent, createPullReq, extractImports, generateMermaidGraph };
+const generateDependencyAnalysis = (graph: any[], files: any[]): string => {
+  if (graph.length === 0) {
+    return 'No internal dependencies detected.';
+  }
+  
+  // 1. Group by file
+  const fileImports: Record<string, string[]> = {};
+  
+  graph.forEach(({ from, to }) => {
+    if (!fileImports[from]) fileImports[from] = [];
+    fileImports[from].push(to);
+  });
+  
+  // 2. Identify key files (high degree)
+  const importCounts: Record<string, number> = {};
+  
+  graph.forEach(({ to }) => {
+    if (!to.startsWith('.')) return; // Skip external
+    importCounts[to] = (importCounts[to] || 0) + 1;
+  });
+  
+  const mostImported = Object.entries(importCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([file, count]) => `  - ${file} (imported ${count} times)`);
+  
+  // 3. Categorize dependencies
+  const external = new Set<string>();
+  const internal = new Set<string>();
+  
+  graph.forEach(({ to }) => {
+    if (to.startsWith('.')) {
+      internal.add(to);
+    } else {
+      external.add(to);
+    }
+  });
+  
+  // 4. Build summary
+  let summary = `## Dependency Analysis\n\n`;
+  summary += `**Internal Dependencies:** ${internal.size} files\n`;
+  summary += `**External Packages:** ${external.size} packages\n\n`;
+  
+  if (mostImported.length > 0) {
+    summary += `**Most Referenced Files:**\n${mostImported.join('\n')}\n\n`;
+  }
+  
+  summary += `**External Packages Used:**\n`;
+  summary += Array.from(external)
+    .filter(pkg => !pkg.includes('node_modules')) // Clean packages only
+    .slice(0, 10)
+    .map(pkg => `  - ${pkg}`)
+    .join('\n');
+  
+  return summary;
+};
+
+
+export { githubRepoGet, repoTreeGet, repositoryGet, 
+  githubRepoTopLevelGet, repoPathGet, githubWebhookHandler,
+  fetchFileContent, createPullReq, extractImports, 
+  generateMermaidGraph, generateDependencyAnalysis };

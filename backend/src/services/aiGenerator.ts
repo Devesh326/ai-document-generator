@@ -1,5 +1,6 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import dotenv from "dotenv";
+import { generateDependencyAnalysis, generateMermaidGraph } from "../controllers/githubController.js";
 
 dotenv.config();
 
@@ -32,9 +33,19 @@ export async function generateReadme(
   files: any,
   analysis: any,
   existingReadme: string | null,
+  dependencyGraph: any[],
   type: 'initial' | 'update'
 ): Promise<string> {
   
+
+  // Generate dependency analysis summary
+  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  
+  // Generate mermaid diagram (only if graph is reasonable size)
+  // const mermaidDiagram = dependencyGraph.length < 50 
+  //   ? generateMermaidGraph(dependencyGraph)
+  //   : '';
+  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
 
   const filesSummary = files.map((f: any) => `
 ### ${f.path}
@@ -57,18 +68,49 @@ ${JSON.stringify(analysis.structure, null, 2)}
 TECH STACK:
 ${JSON.stringify(analysis.metadata.techStack, null, 2)}
 
+Use the following dependency analysis to understand the system architecture.
+Do not restate it unless necessary.
+${depAnalysis}
+${mermaidDiagram ? `ARCHITECTURE DIAGRAM:\n${mermaidDiagram}\n` : ''}
+
+
 CODE FILES:
 ${filesSummary}
 
-Generate a professional README with:
-1. Project Title & Description
-2. Features
-3. Tech Stack
-4. Installation
-5. Usage
-6. Project Structure
-7. Contributing
-8. License
+Generate a professional README with these sections:
+
+1. **Project Title & Description**
+   - Clear, concise overview (2-3 sentences)
+   
+2. **Features**
+Only list features that are clearly observable in the provided files.
+If features cannot be inferred, describe the project purpose instead.
+
+3. **Tech Stack**
+   - List all detected technologies
+
+4. **Architecture**
+
+${mermaidDiagram ? '   - Include the provided mermaid diagram' : '   - Describe the folder structure'}
+
+5. **Installation**
+   - Prerequisites
+   - Step-by-step setup
+   - Environment variables
+
+6. **Usage**
+   - How to run
+   - Example commands
+
+7. **Project Structure**
+   - Brief folder explanation
+
+
+8. **Contributing**
+   - Basic guidelines
+
+9. **License**
+    - Suggest MIT
 
 Format as clean markdown.`;
 
@@ -85,6 +127,7 @@ Rules:
 - Only update the following sections if they exist:
   - Features
   - Tech Stack
+  - Architecture
   - Installation
   - Usage
   - Project Structure
@@ -103,6 +146,14 @@ ${filesSummary}
 
 UPDATED TECH STACK:
 ${JSON.stringify(analysis.metadata.techStack, null, 2)}
+
+Use the following dependency analysis to understand the system architecture.
+Do not restate it unless necessary.
+
+${depAnalysis}
+
+${mermaidDiagram ? `UPDATED ARCHITECTURE:\n${mermaidDiagram}\n` : ''}
+
 
 
 Return the updated README in markdown format.`;
