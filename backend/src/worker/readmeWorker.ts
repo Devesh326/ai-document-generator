@@ -245,10 +245,10 @@ for (const file of filesWithContent) {
 
 console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 
-const mermaidDiagram = generateMermaidGraph(graph);
-console.log(mermaidDiagram);
+// const mermaidDiagram = generateMermaidGraph(graph);
+// console.log(mermaidDiagram);
 
-/*
+// /*
 
     // 7. Check if README already exists
     
@@ -316,7 +316,7 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     console.log('✅ Done!\n');
 
 
-    */
+    // */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);
