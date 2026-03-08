@@ -300,7 +300,8 @@ function selectFiles(
     
     selected.push(...entries);
     
-    const keyFolders = ['routes', 'controllers', 'services', 'models', 'config'];
+    // TODO: change controllers to routeFiles, after service config changes
+    const keyFolders = ['controllers', 'services', 'models', 'config'];
     
     for (const folder of keyFolders) {
       const folderFiles = backendFiles.filter(f =>
@@ -310,7 +311,21 @@ function selectFiles(
       
       selected.push(...folderFiles);
     }
+
+    // ========================================
+     // ALL ROUTE FILES (NO LIMIT)
+     // ========================================
+     const routeFiles = backendFiles.filter(f =>
+       /(routes|endpoints|handlers|api)\//i.test(f.path) &&
+       /\.(js|ts|py|go|rs)$/.test(f.path) &&
+       !/\.(test|spec)\.(js|ts)$/.test(f.path)  // Exclude tests
+     ).map(f => f.path);
+  
+     
+     console.log(`📍 Found ${routeFiles.length} route files in ${backendFolder || 'root'}`);
+     selected.push(...routeFiles);
   }
+
   
   for (const frontendFolder of structure.frontend) {
     const prefix = frontendFolder + '/';
