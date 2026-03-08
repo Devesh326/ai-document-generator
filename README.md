@@ -28,6 +28,8 @@ graph LR
     backend_src_controllers_githubController --> backend_src_services_analyzer
     backend_src_controllers_githubController --> backend_src_queues_docQueue
     backend_src_services_aiGenerator --> backend_src_controllers_githubController
+    backend_src_routes_aiRoute --> backend_src_services_aiGenerator
+    backend_src_routes_githubRoute --> backend_src_controllers_githubController
   end
 ```
 
