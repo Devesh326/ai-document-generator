@@ -218,7 +218,7 @@ console.log("commits:", commits);
     const readme = await generateReadme(
       filesWithContent,
       analysis,
-      existingReadme,  // Pass existing README to preserve custom content
+      existingReadmeContent,  // Pass existing README to preserve custom content
       generationType
     );
     // const readme = "testing readme generation";
