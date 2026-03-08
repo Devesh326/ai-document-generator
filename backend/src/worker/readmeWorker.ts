@@ -169,6 +169,7 @@ console.log("commits:", commits);
         
         console.log(`✅ Fetched ${filesWithContent.length} files`);
     // }
+    
 
     /* --> If not first time, we can skip complete analysis, 
     rather we will analyze only the changed files and update 
@@ -180,9 +181,9 @@ console.log("commits:", commits);
     */
    // First check if changed files are worth generating new README.
 
-
-//    else {
-    if(!isFirstTime) {
+/*
+   else {
+    // if(!isFirstTime) {
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
@@ -218,7 +219,7 @@ console.log("commits:", commits);
     }
     
   }
-
+*/
   console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
   
 
@@ -262,7 +263,7 @@ console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 const mermaidDiagram = generateMermaidGraph(graph);
 console.log(mermaidDiagram);
 
-/*
+// /*
 
     // 7. Check if README already exists
     
@@ -330,7 +331,7 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     console.log('✅ Done!\n');
 
 
-    */
+    // */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);
