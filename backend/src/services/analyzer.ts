@@ -177,7 +177,7 @@ async function detectTechStack(
         else if (deps['vue'] && !stack.frontendFramework.includes('Vue.js')) stack.frontendFramework.push('Vue.js');
         
         // Detect databases
-        if (deps['mongoose'] || deps['mongodb']) stack.database.push('MongoDB');
+        if (deps['mongodb']) stack.database.push('MongoDB');
         if (deps['pg'] || deps['postgres']) stack.database.push('PostgreSQL');
         if (deps['redis'] || deps['ioredis']) stack.database.push('Redis');
 
@@ -222,10 +222,14 @@ async function detectTechStack(
     // Detect Python framework
     const reqFile = await fetchFile(requirementsFile);
     if (reqFile) {
-      if (reqFile.includes('django')) stack.backendFramework.push('Django');
-      else if (reqFile.includes('flask')) stack.backendFramework.push('Flask');
-      else if (reqFile.includes('fastapi')) stack.backendFramework.push('FastAPI');
-      else if (reqFile.includes('selenium')) stack.backendFramework.push('Selenium');
+      // if (reqFile.includes('django')) stack.backendFramework.push('Django');
+      // else if (reqFile.includes('flask')) stack.backendFramework.push('Flask');
+      // else if (reqFile.includes('fastapi')) stack.backendFramework.push('FastAPI');
+      // else if (reqFile.includes('selenium')) stack.backendFramework.push('Selenium');
+      if(/django/i.test(reqFile) && !stack.backendFramework.includes('Django')) stack.backendFramework.push('Django');
+      else if (/flask/i.test(reqFile) && !stack.backendFramework.includes('Flask')) stack.backendFramework.push('Flask');
+      else if (/fastapi/i.test(reqFile) && !stack.backendFramework.includes('FastAPI')) stack.backendFramework.push('FastAPI');
+      else if (/selenium/i.test(reqFile) && !stack.testing!.includes('Selenium')) stack.testing!.push('Selenium');
     }
   }
   
@@ -316,11 +320,14 @@ function selectFiles(
     );
     
     const configs = frontendFiles.filter(f =>
-      f.path === `${prefix}package.json` ||
-      f.path === `${prefix}vite.config.js` ||
-      f.path === `${prefix}vite.config.ts` ||
-      f.path === `${prefix}next.config.js` ||
-      f.path === `${prefix}tsconfig.json`
+      f.path === `${prefix}package.json`      ||
+      f.path === `${prefix}vite.config.js`    ||
+      f.path === `${prefix}vite.config.ts`    ||
+      f.path === `${prefix}next.config.js`    ||
+      f.path === `${prefix}tsconfig.json`     ||
+      f.path === `${prefix}angular.json`      ||
+      f.path === `${prefix}svelte.config.js`  ||
+      f.path === `${prefix}astro.config.mjs`
     ).map(f => f.path);
     
     selected.push(...configs);
