@@ -148,14 +148,13 @@ console.log("commits:", commits);
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
             
             if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+                console.log(`=====Content for ${filePath} ======`,content);
                 if(content){
                     filesWithContent.push({
-                        path: existingReadme,
+                        path: filePath,
                         content: content,
                         truncated: false
                     });
-
-                    console.log(`=====Content for ${filePath} ======`,content);
                 }
             }
             else if (content) {
