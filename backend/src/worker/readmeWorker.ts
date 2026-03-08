@@ -129,7 +129,7 @@ console.log("commits:", commits);
                 content: content,
                 truncated: false
             });
-            console.log("=====Content======",content);
+            // console.log("=====Content======",content);
             
         }
     }
@@ -138,7 +138,7 @@ console.log("commits:", commits);
         
     }
     
-    if(isFirstTime || !existingReadme) {
+    // if(isFirstTime || !existingReadme) {
 
         // 6. Fetch file contents
         console.log('📥 Fetching file contents...');
@@ -147,7 +147,8 @@ console.log("commits:", commits);
             // if path is routes, endpoints, handlers, or api, then we put entire content to it.
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
             
-            if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+            // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+            if(filePath.contains('routes/') || filePath.contains('endpoints/') || filePath.contains('handlers/') || filePath.contains('api/')){
                 console.log(`=====Content for ${filePath} ======`,content);
                 if(content){
                     filesWithContent.push({
@@ -167,7 +168,7 @@ console.log("commits:", commits);
         }
         
         console.log(`✅ Fetched ${filesWithContent.length} files`);
-    }
+    // }
 
     /* --> If not first time, we can skip complete analysis, 
     rather we will analyze only the changed files and update 
@@ -180,7 +181,8 @@ console.log("commits:", commits);
    // First check if changed files are worth generating new README.
 
 
-   else {
+//    else {
+    if(!isFirstTime) {
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
