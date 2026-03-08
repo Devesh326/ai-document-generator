@@ -108,12 +108,12 @@ Return the updated README in markdown format.`;
       },
     }
   });
+  if(response != null && response.text != undefined) return response.text;
 }
 catch (err){
   console.log("Error in generating response from gemini", err)
+  return 'null';
 }
-if(response != null && response.text != undefined) return response.text;
-return 'null';
   // return (response != null) ? response.text : 'null';
 }
 

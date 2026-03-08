@@ -4,8 +4,8 @@ import { githubRepoGet, githubRepoTopLevelGet, githubWebhookHandler, repoPathGet
 
 router.get("/", githubRepoGet);
 router.get("/repository", repositoryGet);
-router.get("/lessgo", githubRepoTopLevelGet);
+// router.get("/lessgo", githubRepoTopLevelGet);
 router.get("/path", repoPathGet);
-router.post("/webhook", githubWebhookHandler)
+router.post("/postreceive", githubWebhookHandler)
 
 export default router;
