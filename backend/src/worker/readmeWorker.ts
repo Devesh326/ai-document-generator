@@ -114,6 +114,7 @@ console.log("commits:", commits);
 
 
         const filesWithContent = [];
+        const routerSummary = [];
         // Reading if Readme file present or not
         let existingReadmeContent = null;
     let existingReadme = null;
@@ -137,51 +138,45 @@ console.log("commits:", commits);
         console.log("some error to fetch if any existing Readme is present");
         
     }
-    
-    // if(isFirstTime || !existingReadme) {
 
-        // 6. Fetch file contents
-        console.log('📥 Fetching file contents...');
-        
-        for (const filePath of analysis.selectedFiles) {
-            // if path is routes, endpoints, handlers, or api, then we put entire content to it.
+    for (const filePath of analysis.selectedFiles) {
+        // if path is routes, endpoints, handlers, or api, then we put entire content to it.
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            
             // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+
             if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/')){
                 console.log(`=====Content for ${filePath} ======`,content);
                 if(content){
-                    filesWithContent.push({
+                    routerSummary.push({
                         path: filePath,
                         content: content,
                         truncated: false
                     });
                 }
             }
-            else if (content) {
+    }
+    
+    if(isFirstTime || !existingReadme) {
+
+        // 6. Fetch file contents
+        console.log('📥 Fetching file contents...');
+
+        
+        for (const filePath of analysis.selectedFiles) {
+            
+            let content = await fetchFileContent(octokit, owner, repoName, filePath);
+            if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
                 filesWithContent.push({
                 path: filePath,
-                content: content.split('\n').slice(0,200).join('\n'),
+                // content: content.split('\n').slice(0,200).join('\n'),
+                content: content.substring(0, 2000),
                 truncated: content.length > 2000
                 });
             }
         }
         
         console.log(`✅ Fetched ${filesWithContent.length} files`);
-    // }
-    
-
-    /* --> If not first time, we can skip complete analysis, 
-    rather we will analyze only the changed files and update 
-    the existing analysis result accordingly. This way we can 
-    preserve the previously selected files and their contents, 
-    and only update the parts that have changed. This will also 
-    allow us to preserve any custom content in the existing README 
-    that is not related to the changed files.
-    */
-   // First check if changed files are worth generating new README.
-
-/*
+    }
    else {
     // if(!isFirstTime) {
     console.log('📊 Analyzing changed files...');
@@ -209,7 +204,7 @@ console.log("commits:", commits);
     
     for (const filePath of shouldGenerate.files) {
         const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        if (content) {
+        if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
             filesWithContent.push({
                 path: filePath,
                 content: content.substring(0, 2000),
@@ -219,7 +214,7 @@ console.log("commits:", commits);
     }
     
   }
-*/
+
   console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
   
 
@@ -274,7 +269,8 @@ console.log(mermaidDiagram);
       analysis,
       existingReadmeContent,  // Pass existing README to preserve custom content
       graph,
-      generationType
+      generationType,
+      routerSummary
     );
     // const readme = "testing readme generation";
     
