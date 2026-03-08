@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Repo {
+  id                  Int                    @id @default(autoincrement())
+  github_repo_id      BigInt                 @unique
+  owner               String                 @db.VarChar(255)
+  repo_name           String                 @db.VarChar(255)
+  installation_id     BigInt
+  readme_generated    Boolean                @default(false)
+  last_readme_commit  String?                @db.VarChar(40)
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
+  
+  readme_generations  ReadmeGeneration[]
+}
+
+model ReadmeGeneration {
+  id          Int       @id @default(autoincrement())
+  repo_id     Int
+  repo        Repo      @relation(fields: [repo_id], references: [id], onDelete: Cascade)
+  commit_sha  String    @db.VarChar(40)
+  status      String    @db.VarChar(50)
+  pr_number   Int?
+  pr_url      String?
+  type        String    @db.VarChar(50)
+  created_at  DateTime  @default(now())
+  completed_at DateTime?
+  
+  @@index([repo_id])
+}
