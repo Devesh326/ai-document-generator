@@ -13,8 +13,8 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 ## Tech Stack
 
 *   **Backend:** TypeScript, Express.js
-*   **AI/LLM:** Google GenAI (Gemini 3.1 Flash)
-*   **Database & ORM:** Prisma with PostgreSQL (or compatible)
+*   **AI/LLM:** Google GenAI (Gemini)
+*   **ORM:** Prisma
 *   **Queueing:** Redis, Bull
 *   **GitHub Integration:** Octokit
 
@@ -45,6 +45,7 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
     GEMINI_API_KEY="your_google_ai_api_key"
     REDIS_URL="redis://localhost:6379"
     GITHUB_APP_ID="your_github_app_id"
+    GITHUB_PRIVATE_KEY_PATH="/path/to/your/private-key.pem"
     ```
 
 4.  **Database Setup:**
