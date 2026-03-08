@@ -74,7 +74,26 @@ Format as clean markdown.`;
 
   } else {
     // Update - preserve custom content, update technical sections
-    prompt = `You are a technical documentation expert. Update this existing README based on recent code changes.
+    prompt = `You are a technical documentation expert.
+
+    Update the README only where necessary.
+
+IMPORTANT: Output ONLY the updated README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the updated README". Start directly with the markdown content (# Title).
+
+Rules:
+- Preserve all custom sections, badges, images, and examples.
+- Only update the following sections if they exist:
+  - Features
+  - Tech Stack
+  - Installation
+  - Usage
+  - Project Structure
+- If these sections are missing, append them at the end.
+- Do not rewrite the entire README.
+- Do not remove user-written content.
+- Do not invent features not present in the code.
+- If no meaningful changes needed, return the original README unchanged
+- Keep the same tone and style as the original
 
 EXISTING README:
 ${existingReadme}
@@ -85,12 +104,6 @@ ${filesSummary}
 UPDATED TECH STACK:
 ${JSON.stringify(analysis.metadata.techStack, null, 2)}
 
-Instructions:
-1. Preserve all custom content (descriptions, examples, badges, etc.)
-2. Update technical sections (Tech Stack, Installation, Project Structure) if needed
-3. Keep the same tone and style as the original
-4. Only modify sections that are outdated based on code changes
-5. If no meaningful changes needed, return the original README unchanged
 
 Return the updated README in markdown format.`;
   }
@@ -104,17 +117,16 @@ Return the updated README in markdown format.`;
       temperature: 0.7,
       maxOutputTokens: 30000,
       thinkingConfig: {
-        thinkingLevel: ThinkingLevel.LOW,
+        thinkingLevel: ThinkingLevel.MEDIUM,
       },
     }
   });
-  if(response != null && response.text != undefined) return response.text;
+  return response?.text;
 }
 catch (err){
   console.log("Error in generating response from gemini", err)
-  return 'null';
 }
-  // return (response != null) ? response.text : 'null';
+return 'null';
 }
 
 export {test};
