@@ -235,9 +235,10 @@ const createPullReq = async (octokit: any, owner: string, repoName: string, read
       }
     ]
   });
+  console.log("PR:", pr?.data)
 console.log("PR number:", pr?.data?.number);
 console.log("PR link:", pr?.data?.html_url);  
-    return pr ? pr.data : null;
+    return pr?.data;
   }
   catch (err){
     console.error('Failed to create pull request:', err);
