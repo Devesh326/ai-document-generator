@@ -83,7 +83,7 @@ The application exposes REST endpoints to trigger repository analysis and docume
 
 *   **Analyze Repository:** `GET /repository?owner=<owner>&repo=<repo>`
     Triggers an analysis of the specified GitHub repository.
-*   **GitHub Webhook:** `POST /webhook`
+*   **GitHub Webhook:** `POST /postreceive`
     Endpoint configured for GitHub to send events. Processes repository changes automatically.
 *   **Path Analysis:** `GET /path`
     Returns the file structure of a specific repository.
