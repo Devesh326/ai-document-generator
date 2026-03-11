@@ -232,10 +232,13 @@ console.log("commits:", commits);
     
   }
 
-  JSON.stringify(filesWithContent)
+
 
   console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
-  
+
+  filesWithContent.map(f => {
+    console.log(`===> ${f.path} : ${f.content}`)
+  })
 
   const normalizePath = (fromPath: string, importPath: string): string => {
   // Skip node_modules
