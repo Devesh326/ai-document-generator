@@ -139,22 +139,22 @@ console.log("commits:", commits);
         
     }
 
-    for (const filePath of analysis.selectedFiles) {
-        // if path is routes, endpoints, handlers, or api, then we put entire content to it.
-            let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+    // for (const filePath of analysis.selectedFiles) {
+    //     // if path is routes, endpoints, handlers, or api, then we put entire content to it.
+    //         let content = await fetchFileContent(octokit, owner, repoName, filePath);
+    //         // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
 
-            if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/')){
-                console.log(`=====Content for ${filePath} ======`,content);
-                if(content){
-                    routerSummary.push({
-                        path: filePath,
-                        content: content,
-                        truncated: false
-                    });
-                }
-            }
-    }
+    //         if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/')){
+    //             console.log(`=====Content for ${filePath} ======`,content);
+    //             if(content){
+    //                 routerSummary.push({
+    //                     path: filePath,
+    //                     content: content,
+    //                     truncated: false
+    //                 });
+    //             }
+    //         }
+    // }
     
     if(isFirstTime || !existingReadme) {
 
@@ -165,7 +165,7 @@ console.log("commits:", commits);
         for (const filePath of analysis.selectedFiles) {
             
             let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
+            if (content) {
                 filesWithContent.push({
                 path: filePath,
                 // content: content.split('\n').slice(0,200).join('\n'),
@@ -204,7 +204,7 @@ console.log("commits:", commits);
     
     for (const filePath of shouldGenerate.files) {
         const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        if (content && !(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/'))) {
+        if (content) {
             filesWithContent.push({
                 path: filePath,
                 content: content.substring(0, 2000),
@@ -241,8 +241,8 @@ console.log("commits:", commits);
 };
 
 
-filesWithContent.concat(routerSummary);
-JSON.stringify(filesWithContent)
+// filesWithContent.concat(routerSummary);
+// JSON.stringify(filesWithContent)
   const graph : any[] = [];
 for (const file of filesWithContent) {
   const deps = extractImports(file.content);
@@ -259,6 +259,10 @@ console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 
 const mermaidDiagram = generateMermaidGraph(graph);
 console.log(mermaidDiagram);
+
+  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  console.log(depAnalysis);
+
 
 /*
 
