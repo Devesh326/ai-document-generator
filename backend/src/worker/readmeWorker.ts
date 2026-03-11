@@ -182,11 +182,26 @@ console.log("commits:", commits);
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
+    commits.forEach(async (commit) => {
+        const data = await octokit.request(`GET /repos/${owner}/${repoName}/commits/${commit.id}`, {
+        owner: owner,
+        repo: repoName,
+        ref: commit.id,
+        headers: {
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Accept': 'application/vnd.github+json'
+        }
+        })
+        console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
+        console.log(data)
+    })
+
+
     commits.forEach((commit: { added: string[]; modified: string[]; removed: string[] }) => {
         changedFiles = changedFiles.concat(commit.added, commit.modified, commit.removed);
     });
 
-    
+
     console.log(`Changed files: ${changedFiles.join(', ')}`);
 
      shouldGenerate = shouldGenerateReadme(changedFiles)
