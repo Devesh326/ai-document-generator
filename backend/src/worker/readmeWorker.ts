@@ -240,7 +240,6 @@ console.log("commits:", commits);
   return resolved.join('/');
 };
 
-
 // filesWithContent.concat(routerSummary);
 // JSON.stringify(filesWithContent)
   const graph : any[] = [];
