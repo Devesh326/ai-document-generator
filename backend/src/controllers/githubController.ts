@@ -390,9 +390,9 @@ const getChangedFilesWithContent = async (octokit, commit, owner, repoName) => {
         'Accept': 'application/vnd.github+json'
     }
     })
-    console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
-    console.log(data)
-    console.log(data.data.files);
+    // console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
+    // console.log(data)
+    // console.log(data.data.files);
     const files = data.data.files;
 
     files.forEach( (file) => map.set(file.filename, file.patch))
