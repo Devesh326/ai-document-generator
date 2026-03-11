@@ -173,9 +173,8 @@ const repositoryGet = async (req: any, res: any) => {
 
 const githubWebhookHandler = async (req: any, res: any) => {
   const data = req.body;
-  console.log("Successfully received the push event");
+  console.log("Successfully received the push event", data);
   
-    
     // need to check if the event triggered is a push event and if the branch is main, then only we will trigger the analysis
     if (data.commits && data.commits.length > 0 && data.ref === 'refs/heads/main') {
       const repository = data.repository;
@@ -235,7 +234,6 @@ const createPullReq = async (octokit: any, owner: string, repoName: string, read
       }
     ]
   });
-  console.log("PR:", pr?.data)
 console.log("PR number:", pr?.data?.number);
 console.log("PR link:", pr?.data?.html_url);  
     return pr?.data;
@@ -374,6 +372,8 @@ const generateDependencyAnalysis = (graph: any[], files: any[]): string => {
     .slice(0, 10)
     .map(pkg => `  - ${pkg}`)
     .join('\n');
+
+    console.log(summary)
   
   return summary;
 };
