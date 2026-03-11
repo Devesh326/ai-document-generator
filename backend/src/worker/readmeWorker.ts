@@ -285,7 +285,7 @@ console.log(mermaidDiagram);
   console.log(depAnalysis);
 
 
-/*
+// /*
 
     // 7. Check if README already exists
     
@@ -354,7 +354,7 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     console.log('✅ Done!\n');
 
 
-    */
+    // */
     
     }catch (error: any) {
     console.error('❌ Error:', error.message);

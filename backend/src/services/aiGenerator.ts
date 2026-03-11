@@ -40,13 +40,13 @@ export async function generateReadme(
   
 
   // Generate dependency analysis summary
-  // const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
   
   // Generate mermaid diagram (only if graph is reasonable size)
   // const mermaidDiagram = dependencyGraph.length < 50 
   //   ? generateMermaidGraph(dependencyGraph)
   //   : '';
-  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
 
   // need to perfect this as well, highly dependent on the code changes
   // const mermaidDiagram = '';
@@ -199,35 +199,12 @@ Format as clean markdown.`;
 
 IMPORTANT: Output ONLY the updated README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the updated README". Start directly with the markdown content (# Title).
 
-Rules:
-- Preserve all custom sections, badges, images, and examples.
-- Only update the following sections if they exist:
-  - Features
-  - Tech Stack
-  - Architecture
-  - Installation
-  - Usage
-  - Project Structure
-- If these sections are missing, append them at the end.
-- Do not rewrite the entire README.
-- Do not remove user-written content.
-- Do not invent features not present in the code.
-- If no meaningful changes needed, return the original README unchanged
-- Keep the same tone and style as the original
-
-
-Architecture Update Rules:
-
-- Treat the architecture in the existing README as the baseline.
-- Only modify the architecture if the code changes clearly introduce or remove components.
-- If the architecture cannot be confidently updated using the provided files, keep the existing architecture unchanged.
-- Do NOT infer new architecture from incomplete file context.
 
 EXISTING README:
 ${existingReadme}
 
 
-RECENT CODE CHANGES (PARTIAL CONTEXT):
+RECENT CODE CHANGES (Git Diffs):
 
 The following files were modified recently. They represent only a subset of the repository.
 
@@ -235,15 +212,19 @@ Do NOT recompute the entire architecture from these files.
 Use them only to update sections that are clearly affected.
 ${filesSummary}
 
-UPDATED TECH STACK:
-${JSON.stringify(analysis.metadata.techStack, null, 2)}
+-----
 
-Use the following dependency analysis to understand the system architecture.
-Do not restate it unless necessary.
+CURRENT TECH STACK:
+${JSON.stringify(analysis.metadata.techStack, null, 2)}
+⚠️ Update Tech Stack section if dependencies changed.
+
+------
 
 ${depAnalysis}
 
 ${mermaidDiagram ? `UPDATED ARCHITECTURE:\n${mermaidDiagram}\n` : ''}
+
+------
 
 ${routerSummary ? `
 UPDATED API ENDPOINTS:
@@ -259,6 +240,36 @@ If API Documentation section doesn't exist but endpoints are detected:
 - Add a new API Documentation section
 - Use the same format as described in the initial generation
 ` : ''}
+
+UPDATE STRATEGY:
+
+1. **Analyze the diffs** to understand what changed:
+   - Lines with '+' are additions
+   - Lines with '-' are deletions
+   - Focus on user-facing changes (new features, API changes, breaking changes)
+
+2. **Update ONLY affected sections:**
+   - Features (if new capabilities added)
+   
+3. **Preserve everything else:**
+   - All custom content (badges, images, examples, links)
+   - User-written descriptions and explanations
+   - Architecture diagrams (unless major structural changes)
+   - Contributing guidelines, License, etc.
+
+4. **Skip update if:**
+   - Changes are only bug fixes or refactoring
+   - Changes are internal implementation details
+   - No user-facing impact
+
+5. **Maintain style:**
+   - Keep the same tone and formatting
+   - Don't change the README structure
+   - Don't add unnecessary sections
+
+---
+
+OUTPUT:
 
 
 Return the updated README in markdown format.`;
