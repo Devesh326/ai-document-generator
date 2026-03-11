@@ -34,18 +34,21 @@ export async function generateReadme(
   analysis: any,
   existingReadme: string | null,
   dependencyGraph: any[],
-  type: 'initial' | 'update'
+  type: 'initial' | 'update',
+  routerSummary?: any[]
 ): Promise<string> {
   
 
   // Generate dependency analysis summary
-  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  // const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
   
   // Generate mermaid diagram (only if graph is reasonable size)
   // const mermaidDiagram = dependencyGraph.length < 50 
   //   ? generateMermaidGraph(dependencyGraph)
   //   : '';
-  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+
+  // need to perfect this as well, highly dependent on the code changes
   // const mermaidDiagram = '';
 
   const filesSummary = files.map((f: any) => `
@@ -99,9 +102,80 @@ ${mermaidDiagram ? '   - Include the provided mermaid diagram' : '   - Describe 
    - Step-by-step setup
    - Environment variables
 
-6. **Usage**
-   - How to run
-   - Example commands
+6. **API Documentation** ${routerSummary ? '(REQUIRED - endpoints detected)' : '(skip if no API)'}
+   ${routerSummary ? `
+   Use this structure:
+   
+   ### Base URL
+   \`\`\`
+   http://localhost:PORT/api/v1
+   \`\`\`
+   
+   ### Authentication
+   (If auth routes exist, explain the auth mechanism)
+   
+   ### Endpoints
+   
+   Group by resource. For each endpoint:
+   
+   #### Resource Name
+   
+   **Method Path** - Description
+   
+   \`\`\`json
+   // Request (if applicable)
+   {
+     "field": "value"
+   }
+   \`\`\`
+   
+   \`\`\`json
+   // Response
+   {
+     "status": "success",
+     "data": {}
+   }
+   \`\`\`
+   
+   Example:
+   
+   #### Users
+   
+   **GET /users** - Retrieve all users
+   
+   \`\`\`json
+   // Response
+   {
+     "status": "success",
+     "data": [
+       { "id": 1, "name": "John", "email": "john@example.com" }
+     ]
+   }
+   \`\`\`
+   
+   **POST /users** - Create new user
+   
+   \`\`\`json
+   // Request
+   {
+     "name": "John Doe",
+     "email": "john@example.com",
+     "password": "securepass"
+   }
+   \`\`\`
+   
+   \`\`\`json
+   // Response
+   {
+     "status": "success",
+     "data": {
+       "id": 1,
+       "name": "John Doe",
+       "email": "john@example.com"
+     }
+   }
+   \`\`\`
+   ` : ''}
 
 7. **Project Structure**
    - Brief folder explanation
@@ -171,6 +245,20 @@ ${depAnalysis}
 
 ${mermaidDiagram ? `UPDATED ARCHITECTURE:\n${mermaidDiagram}\n` : ''}
 
+${routerSummary ? `
+UPDATED API ENDPOINTS:
+${routerSummary}
+IMPORTANT: If the API Documentation section exists in the README:
+- Update it with the new endpoints listed above
+- Remove endpoints that no longer exist
+- Add new endpoints
+- Preserve the existing format and structure
+- Keep any custom descriptions or examples the user added
+
+If API Documentation section doesn't exist but endpoints are detected:
+- Add a new API Documentation section
+- Use the same format as described in the initial generation
+` : ''}
 
 
 Return the updated README in markdown format.`;

@@ -2,7 +2,7 @@
 
 import {docQueue} from '../queues/docQueue.js';
 import prisma from '../models/prisma.js';
-import { createPullReq, extractImports, fetchFileContent, generateMermaidGraph, githubRepoTopLevelGet } from '../controllers/githubController.js';
+import { createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, githubRepoTopLevelGet } from '../controllers/githubController.js';
 import { shouldGenerateReadme } from '../services/analyzer.js';
 import { generateReadme } from '../services/aiGenerator.js';
 import fs from 'fs';
@@ -186,6 +186,7 @@ console.log("commits:", commits);
         changedFiles = changedFiles.concat(commit.added, commit.modified, commit.removed);
     });
 
+    
     console.log(`Changed files: ${changedFiles.join(', ')}`);
 
      shouldGenerate = shouldGenerateReadme(changedFiles)
@@ -259,7 +260,7 @@ console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 const mermaidDiagram = generateMermaidGraph(graph);
 console.log(mermaidDiagram);
 
-  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  const depAnalysis = generateDependencyAnalysis(graph, filesWithContent);
   console.log(depAnalysis);
 
 
