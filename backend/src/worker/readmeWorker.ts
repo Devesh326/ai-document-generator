@@ -2,7 +2,7 @@
 
 import {docQueue} from '../queues/docQueue.js';
 import prisma from '../models/prisma.js';
-import { createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, githubRepoTopLevelGet } from '../controllers/githubController.js';
+import { createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, getChangedFilesWithContent, githubRepoTopLevelGet } from '../controllers/githubController.js';
 import { shouldGenerateReadme } from '../services/analyzer.js';
 import { generateReadme } from '../services/aiGenerator.js';
 import fs from 'fs';
@@ -155,6 +155,10 @@ console.log("commits:", commits);
     //             }
     //         }
     // }
+
+
+    // Logic to get all the changed files
+    const changedFiles = []
     
     if(isFirstTime || !existingReadme) {
 
@@ -182,21 +186,11 @@ console.log("commits:", commits);
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
-    commits.forEach(async (commit : any) => {
-        const data = await octokit.request(`GET /repos/${owner}/${repoName}/commits/${commit.id}`, {
-        owner: owner,
-        repo: repoName,
-        ref: commit.id,
-        headers: {
-            'X-GitHub-Api-Version': '2022-11-28',
-            'Accept': 'application/vnd.github+json'
-        }
-        })
-        console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
-        console.log(data)
-        console.log(data.data.files);
-        
-    })
+    let map = new Map();
+
+    for( const commit of commits) {
+        map = await getChangedFilesWithContent(octokit, commit, owner, repoName)
+    }
 
 
     commits.forEach((commit: { added: string[]; modified: string[]; removed: string[] }) => {
@@ -221,17 +215,24 @@ console.log("commits:", commits);
     console.log('Significant changes detected. Proceeding with README generation.');
     
     for (const filePath of shouldGenerate.files) {
-        const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        if (content) {
-            filesWithContent.push({
-                path: filePath,
-                content: content.substring(0, 2000),
-                truncated: content.length > 2000
-            });
-        }
+        // const content = await fetchFileContent(octokit, owner, repoName, filePath);
+        // if (content) {
+        //     filesWithContent.push({
+        //         path: filePath,
+        //         content: content.substring(0, 2000),
+        //         truncated: content.length > 2000
+        //     });
+        // }
+        filesWithContent.push({path: filePath, 
+                            content: map.get(filePath).substring(0,2000),
+                            truncated: map.get(filePath).length > 2000
+        })
+
     }
     
   }
+
+  JSON.stringify(filesWithContent)
 
   console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
   

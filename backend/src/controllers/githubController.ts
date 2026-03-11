@@ -378,8 +378,32 @@ const generateDependencyAnalysis = (graph: any[], files: any[]): string => {
   return summary;
 };
 
+const getChangedFilesWithContent = async (octokit, commit, owner, repoName) => {
+
+  const map = new Map();
+    const data = await octokit.request(`GET /repos/${owner}/${repoName}/commits/${commit.id}`, {
+    owner: owner,
+    repo: repoName,
+    ref: commit.id,
+    headers: {
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Accept': 'application/vnd.github+json'
+    }
+    })
+    console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
+    console.log(data)
+    console.log(data.data.files);
+    const files = data.data.files;
+
+    files.forEach( (file) => map.set(file.filename, file.patch))
+    
+    return map;
+
+}
+
 
 export { githubRepoGet, repoTreeGet, repositoryGet, 
   githubRepoTopLevelGet, repoPathGet, githubWebhookHandler,
   fetchFileContent, createPullReq, extractImports, 
-  generateMermaidGraph, generateDependencyAnalysis };
+  generateMermaidGraph, generateDependencyAnalysis, 
+  getChangedFilesWithContent};
