@@ -182,7 +182,7 @@ console.log("commits:", commits);
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
-    commits.forEach(async (commit) => {
+    commits.forEach(async (commit : any) => {
         const data = await octokit.request(`GET /repos/${owner}/${repoName}/commits/${commit.id}`, {
         owner: owner,
         repo: repoName,
@@ -194,6 +194,8 @@ console.log("commits:", commits);
         })
         console.log(`Changed files in commit ${commit.id}:`, data.data.files.map((f: any) => f.filename));
         console.log(data)
+        console.log(data.data.files);
+        
     })
 
 
