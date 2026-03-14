@@ -207,11 +207,31 @@ console.log("commits:", commits);
     console.log('📊 Analyzing changed files...');
     let changedFiles: string[] = [];
 
-    let map = new Map();
+    // let map = new Map();
 
-    for( const commit of commits) {
-        map = await getChangedFilesWithContent(octokit, commit, owner, repoName)
+    // for( const commit of commits) {
+    //     const result = await getChangedFilesWithContent(octokit, commit, owner, repoName)
+
+    //     for (const [key, value] of result) {
+    //         map.set(key, value);
+    //     }
+    // }
+
+    const map = new Map();
+
+    const results = await Promise.all(
+        commits.map(commit =>
+            getChangedFilesWithContent(octokit, commit, owner, repoName)
+        )
+    );
+
+    for (const result of results) {
+        for (const [key, value] of result) {
+            map.set(key, value);
+        }
     }
+
+    console.log(map);
 
 
     commits.forEach((commit: { added: string[]; modified: string[]; removed: string[] }) => {
