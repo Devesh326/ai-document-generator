@@ -43,10 +43,10 @@ export async function generateReadme(
   const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
   
   // Generate mermaid diagram (only if graph is reasonable size)
-  // const mermaidDiagram = dependencyGraph.length < 50 
-  //   ? generateMermaidGraph(dependencyGraph)
-  //   : '';
-  const mermaidDiagram = generateMermaidGraph(dependencyGraph);
+  const mermaidDiagram = dependencyGraph.length < 50 
+    ? generateMermaidGraph(dependencyGraph)
+    : '';
+  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
 
   // need to perfect this as well, highly dependent on the code changes
   // const mermaidDiagram = '';

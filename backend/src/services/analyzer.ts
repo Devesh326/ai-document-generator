@@ -9,6 +9,7 @@ interface AnalysisResult {
   structure: {
     backend: string[];
     frontend: string[];
+    mobile: string[];
     shared: string[];
   };
   selectedFiles: string[];
@@ -17,6 +18,7 @@ interface AnalysisResult {
     techStack: {
       backend?: string;
       frontend?: string;
+      mobile?: string;
       database?: string[];
     };
   };
@@ -43,104 +45,292 @@ export async function analyzeRepo(
   };
 }
 
+// ============================================================================
+// MONOREPO DETECTION - Enhanced for all patterns
+// ============================================================================
+
 function detectMonorepo(tree: GitHubTreeItem[]): boolean {
-  const monorepoFiles = ['pnpm-workspace.yaml', 'lerna.json', 'nx.json', 'turbo.json'];
+  // Check for monorepo config files
+  const monorepoFiles = [
+    'pnpm-workspace.yaml', 
+    'lerna.json', 
+    'nx.json', 
+    'turbo.json',
+    'rush.json',
+    'workspace.json',
+    'pnpm-workspace.yaml'
+  ];
   
   if (tree.some(t => monorepoFiles.includes(t.path))) {
     return true;
   }
   
-  const hasBackend = tree.some(t => t.path === 'backend');
-  const hasFrontend = tree.some(t => t.path === 'frontend');
+  // Check for multiple package.json/requirements.txt (workspace pattern)
+  const packageJsonCount = tree.filter(t => t.path.endsWith('package.json')).length;
+  const requirementsCount = tree.filter(t => t.path.endsWith('requirements.txt')).length;
+  const goModCount = tree.filter(t => t.path.endsWith('go.mod')).length;
   
-  if (hasBackend && hasFrontend) {
+  if (packageJsonCount > 2 || requirementsCount > 1 || goModCount > 1) {
     return true;
   }
   
+  // Check for explicit backend/frontend folders
+  const hasBackend = tree.some(t => 
+    t.path === 'backend' || 
+    t.path === 'server' || 
+    t.path === 'api' ||
+    t.path === 'services' ||
+    t.path === 'src/backend'
+  );
+  
+  const hasFrontend = tree.some(t => 
+    t.path === 'frontend' || 
+    t.path === 'client' || 
+    t.path === 'web' ||
+    t.path === 'ui' ||
+    t.path === 'src/frontend'
+  );
+  
+  const hasMobile = tree.some(t =>
+    t.path === 'mobile' ||
+    t.path === 'app' ||
+    t.path === 'android' ||
+    t.path === 'ios'
+  );
+  
+  if ((hasBackend && hasFrontend) || (hasBackend && hasMobile) || (hasFrontend && hasMobile)) {
+    return true;
+  }
+  
+  // Check for workspace-style folders
   const hasAppsFolder = tree.some(t => t.path.startsWith('apps/'));
   const hasPackagesFolder = tree.some(t => t.path.startsWith('packages/'));
+  const hasServicesFolder = tree.some(t => t.path.startsWith('services/'));
+  const hasModulesFolder = tree.some(t => t.path.startsWith('modules/'));
   
-  return hasAppsFolder || hasPackagesFolder;
+  return hasAppsFolder || hasPackagesFolder || hasServicesFolder || hasModulesFolder;
 }
+
+// ============================================================================
+// STRUCTURE CATEGORIZATION - Enhanced for mobile, nested structures
+// ============================================================================
 
 function categorizeStructure(tree: GitHubTreeItem[], isMonorepo: boolean) {
   const structure = {
     backend: [] as string[],
     frontend: [] as string[],
+    mobile: [] as string[],
     shared: [] as string[]
   };
   
-  // if (!isMonorepo) {
-  //   structure.backend.push('');
-  //   return structure;
-  // }
-  
+  // Get top-level folders
   const topLevelFolders = tree
     .filter(t => t.type === 'tree')
     .filter(t => !t.path.includes('/'))
     .map(t => t.path);
   
+  // Check for nested src structure (e.g., src/backend, src/frontend)
+  const hasSrcFolder = topLevelFolders.includes('src');
+  if (hasSrcFolder) {
+    const srcSubfolders = tree
+      .filter(t => t.type === 'tree')
+      .filter(t => t.path.startsWith('src/') && !t.path.substring(4).includes('/'))
+      .map(t => t.path);
+    
+    for (const folder of srcSubfolders) {
+      const category = categorizeFolderComprehensive(folder, tree);
+      if (category === 'backend') structure.backend.push(folder);
+      else if (category === 'frontend') structure.frontend.push(folder);
+      else if (category === 'mobile') structure.mobile.push(folder);
+      else if (category === 'shared') structure.shared.push(folder);
+    }
+  }
+  
+  // Check apps/ and packages/ folders (Nx, Turborepo pattern)
+  const workspaceFolders = ['apps', 'packages', 'services', 'modules'];
+  for (const workspace of workspaceFolders) {
+    if (!topLevelFolders.includes(workspace)) continue;
+    
+    const subfolders = tree
+      .filter(t => t.type === 'tree')
+      .filter(t => t.path.startsWith(`${workspace}/`) && !t.path.substring(workspace.length + 1).includes('/'))
+      .map(t => t.path);
+    
+    for (const folder of subfolders) {
+      const category = categorizeFolderComprehensive(folder, tree);
+      if (category === 'backend') structure.backend.push(folder);
+      else if (category === 'frontend') structure.frontend.push(folder);
+      else if (category === 'mobile') structure.mobile.push(folder);
+      else if (category === 'shared') structure.shared.push(folder);
+    }
+  }
+  
+  // Regular top-level folders
   for (const folder of topLevelFolders) {
-    const category = categorizeFolderSimple(folder, tree);
+    if (folder === 'src' || workspaceFolders.includes(folder)) continue;
+    
+    const category = categorizeFolderComprehensive(folder, tree);
     
     if (category === 'backend') {
       structure.backend.push(folder);
     } else if (category === 'frontend') {
       structure.frontend.push(folder);
+    } else if (category === 'mobile') {
+      structure.mobile.push(folder);
     } else if (category === 'shared') {
       structure.shared.push(folder);
     }
   }
   
+  // If no structure detected, assume root is backend
+  if (structure.backend.length === 0 && structure.frontend.length === 0 && structure.mobile.length === 0) {
+    structure.backend.push('');
+  }
+  
   return structure;
 }
 
-function categorizeFolderSimple(
+// ============================================================================
+// COMPREHENSIVE FOLDER CATEGORIZATION
+// ============================================================================
+
+function categorizeFolderComprehensive(
   folder: string,
   tree: GitHubTreeItem[]
-): 'backend' | 'frontend' | 'shared' | 'unknown' {
+): 'backend' | 'frontend' | 'mobile' | 'shared' | 'unknown' {
   
-  const backendNames = ['backend', 'server', 'api', 'services', 'service'];
-  const frontendNames = ['frontend', 'client', 'web', 'ui', 'app', 'www'];
-  const sharedNames = ['shared', 'common', 'lib', 'libs', 'packages', 'core'];
+  const folderName = folder.split('/').pop()!.toLowerCase();
   
-  if (backendNames.includes(folder.toLowerCase())) {
-    return 'backend';
-  }
+  // Backend patterns
+  const backendNames = [
+    'backend', 'server', 'api', 'services', 'service',
+    'core', 'domain', 'application', 'infrastructure', // DDD/Clean Architecture
+    'cmd', 'internal', 'pkg' // Go patterns
+  ];
   
-  if (frontendNames.includes(folder.toLowerCase())) {
-    return 'frontend';
-  }
+  // Frontend patterns
+  const frontendNames = [
+    'frontend', 'client', 'web', 'ui', 'app', 'www',
+    'webapp', 'website', 'portal', 'dashboard'
+  ];
   
-  if (sharedNames.includes(folder.toLowerCase())) {
-    return 'shared';
-  }
+  // Mobile patterns
+  const mobileNames = [
+    'mobile', 'android', 'ios', 'flutter', 'react-native',
+    'rn', 'native', 'app-mobile'
+  ];
   
+  // Shared/Common patterns
+  const sharedNames = [
+    'shared', 'common', 'lib', 'libs', 'packages', 'utils',
+    'helpers', 'core', 'types', 'models', 'constants'
+  ];
+  
+  if (backendNames.includes(folderName)) return 'backend';
+  if (frontendNames.includes(folderName)) return 'frontend';
+  if (mobileNames.includes(folderName)) return 'mobile';
+  if (sharedNames.includes(folderName)) return 'shared';
+  
+  // Analyze files inside folder
   const filesInFolder = tree.filter(t => 
     t.path.startsWith(folder + '/') && 
     t.type === 'blob'
   );
   
+  // Backend indicators
   const hasBackendFiles = filesInFolder.some(f =>
+    // Config files
     f.path.endsWith('requirements.txt') ||
     f.path.endsWith('go.mod') ||
+    f.path.endsWith('pom.xml') ||
+    f.path.endsWith('build.gradle') ||
+    f.path.endsWith('Gemfile') ||
+    f.path.endsWith('Cargo.toml') ||
+    f.path.endsWith('composer.json') ||
+    // Backend folders
     f.path.includes('/routes/') ||
-    f.path.includes('/controllers/')
+    f.path.includes('/controllers/') ||
+    f.path.includes('/models/') ||
+    f.path.includes('/services/') ||
+    f.path.includes('/repositories/') ||
+    f.path.includes('/handlers/') ||
+    f.path.includes('/middleware/') ||
+    f.path.includes('/dto/') ||
+    f.path.includes('/entities/') ||
+    // Spring Boot
+    f.path.includes('/src/main/java/') ||
+    // Django
+    f.path.endsWith('settings.py') ||
+    f.path.endsWith('wsgi.py') ||
+    // Laravel
+    f.path.includes('/app/Http/') ||
+    f.path.endsWith('artisan') ||
+    // Rails
+    f.path.endsWith('Rakefile') ||
+    f.path.includes('/app/controllers/')
   );
   
   if (hasBackendFiles) return 'backend';
   
+  // Frontend indicators
   const hasFrontendFiles = filesInFolder.some(f =>
+    // HTML/Config
     f.path.endsWith('index.html') ||
     f.path.endsWith('vite.config.js') ||
+    f.path.endsWith('vite.config.ts') ||
     f.path.endsWith('next.config.js') ||
-    f.path.includes('/src/App.')
+    f.path.endsWith('nuxt.config.js') ||
+    f.path.endsWith('angular.json') ||
+    f.path.endsWith('svelte.config.js') ||
+    f.path.endsWith('astro.config.mjs') ||
+    f.path.endsWith('vue.config.js') ||
+    // Frontend folders
+    f.path.includes('/components/') ||
+    f.path.includes('/pages/') ||
+    f.path.includes('/views/') ||
+    f.path.includes('/layouts/') ||
+    f.path.includes('/public/') ||
+    f.path.includes('/static/') ||
+    // React/Vue specific
+    f.path.endsWith('/src/App.tsx') ||
+    f.path.endsWith('/src/App.jsx') ||
+    f.path.endsWith('/src/App.vue') ||
+    f.path.endsWith('/src/main.tsx') ||
+    f.path.endsWith('/src/main.ts')
   );
   
   if (hasFrontendFiles) return 'frontend';
   
+  // Mobile indicators
+  const hasMobileFiles = filesInFolder.some(f =>
+    // Android
+    f.path.endsWith('AndroidManifest.xml') ||
+    f.path.includes('/app/src/main/java/') ||
+    f.path.endsWith('build.gradle') ||
+    f.path.endsWith('settings.gradle') ||
+    // iOS
+    f.path.endsWith('Info.plist') ||
+    f.path.endsWith('Podfile') ||
+    f.path.includes('.xcodeproj/') ||
+    f.path.includes('.xcworkspace/') ||
+    // Flutter
+    f.path.endsWith('pubspec.yaml') ||
+    f.path.includes('/lib/main.dart') ||
+    // React Native
+    f.path.endsWith('app.json') ||
+    f.path.endsWith('metro.config.js') ||
+    f.path.includes('/android/app/') ||
+    f.path.includes('/ios/')
+  );
+  
+  if (hasMobileFiles) return 'mobile';
+  
   return 'unknown';
 }
+
+// ============================================================================
+// TECH STACK DETECTION - Comprehensive
+// ============================================================================
 
 async function detectTechStack(
   tree: GitHubTreeItem[],
@@ -151,113 +341,273 @@ async function detectTechStack(
     backendLanguage: [],
     backendFramework: [],
     frontendFramework: [],
+    mobileFramework: [],
     orm: null,
-    testing: []
+    testing: [],
+    buildTool: null
   };
   
+  // =======================
+  // Node.js / JavaScript / TypeScript
+  // =======================
   const packageJsons = tree.filter(t => t.path.endsWith('package.json'));
   
-  for (const pkg of packageJsons.slice(0, 3)) {
-    // console.log(pkg);
-    
+  for (const pkg of packageJsons.slice(0, 5)) {
     const content = await fetchFile(pkg);
     if (content) {
       try {
         const parsed = JSON.parse(content);
         const deps = { ...parsed.dependencies, ...parsed.devDependencies };
         
-        // Detect backend framework
+        // Backend frameworks
         if (deps['express'] && !stack.backendFramework.includes('Express')) stack.backendFramework.push('Express');
-        else if (deps['fastify'] && !stack.backendFramework.includes('Fastify')) stack.backendFramework.push('Fastify');
-        else if (deps['@nestjs/core'] && !stack.backendFramework.includes('NestJS')) stack.backendFramework.push('NestJS');
+        if (deps['fastify'] && !stack.backendFramework.includes('Fastify')) stack.backendFramework.push('Fastify');
+        if (deps['@nestjs/core'] && !stack.backendFramework.includes('NestJS')) stack.backendFramework.push('NestJS');
+        if (deps['koa'] && !stack.backendFramework.includes('Koa')) stack.backendFramework.push('Koa');
+        if (deps['hapi'] && !stack.backendFramework.includes('Hapi')) stack.backendFramework.push('Hapi');
         
-        // Detect frontend framework
-        if (deps['react'] && !stack.frontendFramework.includes('React.js')) stack.frontendFramework.push('React.js');
-        else if (deps['next'] && !stack.frontendFramework.includes('Next.js')) stack.frontendFramework.push('Next.js');
-        else if (deps['vue'] && !stack.frontendFramework.includes('Vue.js')) stack.frontendFramework.push('Vue.js');
+        // Frontend frameworks
+        if (deps['react'] && !stack.frontendFramework.includes('React')) stack.frontendFramework.push('React');
+        if (deps['next'] && !stack.frontendFramework.includes('Next.js')) stack.frontendFramework.push('Next.js');
+        if (deps['vue'] && !stack.frontendFramework.includes('Vue.js')) stack.frontendFramework.push('Vue.js');
+        if (deps['nuxt'] && !stack.frontendFramework.includes('Nuxt.js')) stack.frontendFramework.push('Nuxt.js');
+        if (deps['@angular/core'] && !stack.frontendFramework.includes('Angular')) stack.frontendFramework.push('Angular');
+        if (deps['svelte'] && !stack.frontendFramework.includes('Svelte')) stack.frontendFramework.push('Svelte');
+        if (deps['astro'] && !stack.frontendFramework.includes('Astro')) stack.frontendFramework.push('Astro');
         
-        // Detect databases
-        if (deps['mongodb']) stack.database.push('MongoDB');
-        if (deps['pg'] || deps['postgres']) stack.database.push('PostgreSQL');
-        if (deps['redis'] || deps['ioredis']) stack.database.push('Redis');
-
-        //Detect ORMs
+        // Mobile frameworks
+        if (deps['react-native'] && !stack.mobileFramework.includes('React Native')) stack.mobileFramework.push('React Native');
+        if (deps['expo'] && !stack.mobileFramework.includes('Expo')) stack.mobileFramework.push('Expo');
+        if (deps['@capacitor/core'] && !stack.mobileFramework.includes('Capacitor')) stack.mobileFramework.push('Capacitor');
+        if (deps['@ionic/angular'] && !stack.mobileFramework.includes('Ionic')) stack.mobileFramework.push('Ionic');
+        
+        // Databases
+        if (deps['mongodb'] || deps['mongoose']) {
+          if (!stack.database.includes('MongoDB')) stack.database.push('MongoDB');
+        }
+        if (deps['pg'] || deps['postgres']) {
+          if (!stack.database.includes('PostgreSQL')) stack.database.push('PostgreSQL');
+        }
+        if (deps['mysql'] || deps['mysql2']) {
+          if (!stack.database.includes('MySQL')) stack.database.push('MySQL');
+        }
+        if (deps['redis'] || deps['ioredis']) {
+          if (!stack.database.includes('Redis')) stack.database.push('Redis');
+        }
+        if (deps['sqlite3'] || deps['better-sqlite3']) {
+          if (!stack.database.includes('SQLite')) stack.database.push('SQLite');
+        }
+        
+        // ORMs
         if (deps['prisma'] || deps['@prisma/client']) stack.orm = 'Prisma';
         else if (deps['sequelize']) stack.orm = 'Sequelize';
         else if (deps['typeorm']) stack.orm = 'TypeORM';
         else if (deps['drizzle-orm']) stack.orm = 'Drizzle';
         else if (deps['mongoose']) stack.orm = 'Mongoose';
-
-        // Detect testing
-      if (deps['jest']) stack.testing!.push('Jest');
-      if (deps['vitest']) stack.testing!.push('Vitest');
-      if (deps['mocha']) stack.testing!.push('Mocha');
-      if (deps['playwright']) stack.testing!.push('Playwright');
-      
-      // Detect language
-      if (deps['typescript'] || tree.some(f => f.path.endsWith('tsconfig.json'))) {
-        if(!stack.backendLanguage.includes('TypeScript')) stack.backendLanguage.push('TypeScript');
-      } else {
-        if (!stack.backendLanguage.includes('JavaScript')) {
-          stack.backendLanguage.push('JavaScript');
+        else if (deps['knex']) stack.orm = 'Knex.js';
+        
+        // Testing
+        if (deps['jest'] && !stack.testing.includes('Jest')) stack.testing.push('Jest');
+        if (deps['vitest'] && !stack.testing.includes('Vitest')) stack.testing.push('Vitest');
+        if (deps['mocha'] && !stack.testing.includes('Mocha')) stack.testing.push('Mocha');
+        if (deps['playwright'] && !stack.testing.includes('Playwright')) stack.testing.push('Playwright');
+        if (deps['cypress'] && !stack.testing.includes('Cypress')) stack.testing.push('Cypress');
+        
+        // Language detection
+        if (deps['typescript'] || tree.some(f => f.path.endsWith('tsconfig.json'))) {
+          if (!stack.backendLanguage.includes('TypeScript')) stack.backendLanguage.push('TypeScript');
+        } else {
+          if (!stack.backendLanguage.includes('JavaScript')) stack.backendLanguage.push('JavaScript');
         }
-      }
         
       } catch {}
     }
   }
   
-//   if (tree.some(t => t.path.endsWith('requirements.txt'))) {
-//     if (!stack.backendLanguage.includes('Python')) stack.backendLanguage.push('Python');
-//   }
+  // =======================
+  // Python
+  // =======================
+  let pythonFile = tree.find(f => 
+    f.path.endsWith('requirements.txt') || 
+    f.path.endsWith('pyproject.toml') ||
+    f.path.endsWith('Pipfile')
+  );
   
-//   if (tree.some(t => t.path.endsWith('go.mod'))) {
-//     if (!stack.backendLanguage.includes('Go')) stack.backendLanguage.push('Go');
-//   }
-
-  let requirementsFile = tree.find(f => f.path.endsWith('requirements.txt') || f.path.endsWith('pyproject.toml'));
-  if (requirementsFile) {
-    stack.backendLanguage!.push('Python');
+  if (pythonFile) {
+    if (!stack.backendLanguage.includes('Python')) stack.backendLanguage.push('Python');
     
-    // Detect Python framework
-    const reqFile = await fetchFile(requirementsFile);
-    if (reqFile) {
-      // if (reqFile.includes('django')) stack.backendFramework.push('Django');
-      // else if (reqFile.includes('flask')) stack.backendFramework.push('Flask');
-      // else if (reqFile.includes('fastapi')) stack.backendFramework.push('FastAPI');
-      // else if (reqFile.includes('selenium')) stack.backendFramework.push('Selenium');
-      if(/django/i.test(reqFile) && !stack.backendFramework.includes('Django')) stack.backendFramework.push('Django');
-      else if (/flask/i.test(reqFile) && !stack.backendFramework.includes('Flask')) stack.backendFramework.push('Flask');
-      else if (/fastapi/i.test(reqFile) && !stack.backendFramework.includes('FastAPI')) stack.backendFramework.push('FastAPI');
-      else if (/selenium/i.test(reqFile) && !stack.testing!.includes('Selenium')) stack.testing!.push('Selenium');
+    const content = await fetchFile(pythonFile);
+    if (content) {
+      // Frameworks
+      if (/django/i.test(content) && !stack.backendFramework.includes('Django')) stack.backendFramework.push('Django');
+      if (/flask/i.test(content) && !stack.backendFramework.includes('Flask')) stack.backendFramework.push('Flask');
+      if (/fastapi/i.test(content) && !stack.backendFramework.includes('FastAPI')) stack.backendFramework.push('FastAPI');
+      if (/tornado/i.test(content) && !stack.backendFramework.includes('Tornado')) stack.backendFramework.push('Tornado');
+      if (/sanic/i.test(content) && !stack.backendFramework.includes('Sanic')) stack.backendFramework.push('Sanic');
+      
+      // Databases/ORMs
+      if (/sqlalchemy/i.test(content)) {
+        if (!stack.orm) stack.orm = 'SQLAlchemy';
+        if (!stack.database.includes('SQL')) stack.database.push('SQL');
+      }
+      if (/psycopg/i.test(content) && !stack.database.includes('PostgreSQL')) stack.database.push('PostgreSQL');
+      if (/pymongo/i.test(content) && !stack.database.includes('MongoDB')) stack.database.push('MongoDB');
+      
+      // Testing
+      if (/pytest/i.test(content) && !stack.testing.includes('pytest')) stack.testing.push('pytest');
+      if (/selenium/i.test(content) && !stack.testing.includes('Selenium')) stack.testing.push('Selenium');
     }
   }
   
-  requirementsFile = tree.find(f => f.path.endsWith('go.mod'));
-  if (requirementsFile) {
-    stack.backendLanguage!.push('Go');  
+  // =======================
+  // Go
+  // =======================
+  let goModFile = tree.find(f => f.path.endsWith('go.mod'));
+  if (goModFile) {
+    if (!stack.backendLanguage.includes('Go')) stack.backendLanguage.push('Go');
     
-    const goMod = await fetchFile(requirementsFile);
-    if (goMod) {
-      if (goMod.includes('gin-gonic/gin')) stack.backendFramework.push('Gin');
-      else if (goMod.includes('gofiber/fiber')) stack.backendFramework.push('Fiber');
-      else if (goMod.includes('echo')) stack.backendFramework.push('Echo');
+    const content = await fetchFile(goModFile);
+    if (content) {
+      if (/gin-gonic\/gin/i.test(content) && !stack.backendFramework.includes('Gin')) stack.backendFramework.push('Gin');
+      if (/gofiber\/fiber/i.test(content) && !stack.backendFramework.includes('Fiber')) stack.backendFramework.push('Fiber');
+      if (/labstack\/echo/i.test(content) && !stack.backendFramework.includes('Echo')) stack.backendFramework.push('Echo');
+      if (/gorilla\/mux/i.test(content) && !stack.backendFramework.includes('Gorilla Mux')) stack.backendFramework.push('Gorilla Mux');
+      
+      // Databases
+      if (/gorm/i.test(content)) {
+        if (!stack.orm) stack.orm = 'GORM';
+      }
+      if (/lib\/pq/i.test(content) && !stack.database.includes('PostgreSQL')) stack.database.push('PostgreSQL');
+      if (/go-sql-driver\/mysql/i.test(content) && !stack.database.includes('MySQL')) stack.database.push('MySQL');
+      if (/go-redis\/redis/i.test(content) && !stack.database.includes('Redis')) stack.database.push('Redis');
     }
   }
   
-  requirementsFile = tree.find(f => f.path.endsWith('Cargo.toml'));
-  if (requirementsFile) {
-    stack.backendLanguage!.push('Rust');
+  // =======================
+  // Java (Spring Boot, etc.)
+  // =======================
+  let javaFile = tree.find(f => f.path.endsWith('pom.xml') || f.path.endsWith('build.gradle'));
+  if (javaFile) {
+    if (!stack.backendLanguage.includes('Java')) stack.backendLanguage.push('Java');
+    stack.buildTool = javaFile.path.endsWith('pom.xml') ? 'Maven' : 'Gradle';
+    
+    const content = await fetchFile(javaFile);
+    if (content) {
+      if (/spring-boot/i.test(content) && !stack.backendFramework.includes('Spring Boot')) stack.backendFramework.push('Spring Boot');
+      if (/micronaut/i.test(content) && !stack.backendFramework.includes('Micronaut')) stack.backendFramework.push('Micronaut');
+      if (/quarkus/i.test(content) && !stack.backendFramework.includes('Quarkus')) stack.backendFramework.push('Quarkus');
+      
+      // Databases
+      if (/hibernate/i.test(content)) stack.orm = 'Hibernate';
+      if (/postgresql/i.test(content) && !stack.database.includes('PostgreSQL')) stack.database.push('PostgreSQL');
+      if (/mysql/i.test(content) && !stack.database.includes('MySQL')) stack.database.push('MySQL');
+      if (/mongodb/i.test(content) && !stack.database.includes('MongoDB')) stack.database.push('MongoDB');
+      
+      // Testing
+      if (/junit/i.test(content) && !stack.testing.includes('JUnit')) stack.testing.push('JUnit');
+      if (/mockito/i.test(content) && !stack.testing.includes('Mockito')) stack.testing.push('Mockito');
+    }
   }
   
-  requirementsFile = tree.find(f => f.path.endsWith('pom.xml') || f.path.endsWith('build.gradle'));
-  if (requirementsFile) {
-    stack.backendLanguage!.push('Java');
-    stack.buildTool = requirementsFile.path === 'pom.xml' ? 'Maven' : 'Gradle';
+  // =======================
+  // Rust
+  // =======================
+  let cargoFile = tree.find(f => f.path.endsWith('Cargo.toml'));
+  if (cargoFile) {
+    if (!stack.backendLanguage.includes('Rust')) stack.backendLanguage.push('Rust');
+    
+    const content = await fetchFile(cargoFile);
+    if (content) {
+      if (/actix-web/i.test(content) && !stack.backendFramework.includes('Actix')) stack.backendFramework.push('Actix');
+      if (/rocket/i.test(content) && !stack.backendFramework.includes('Rocket')) stack.backendFramework.push('Rocket');
+      if (/axum/i.test(content) && !stack.backendFramework.includes('Axum')) stack.backendFramework.push('Axum');
+      
+      // Databases
+      if (/diesel/i.test(content)) stack.orm = 'Diesel';
+      if (/sqlx/i.test(content) && !stack.orm) stack.orm = 'SQLx';
+    }
+  }
+  
+  // =======================
+  // Ruby (Rails)
+  // =======================
+  let gemfile = tree.find(f => f.path.endsWith('Gemfile'));
+  if (gemfile) {
+    if (!stack.backendLanguage.includes('Ruby')) stack.backendLanguage.push('Ruby');
+    
+    const content = await fetchFile(gemfile);
+    if (content) {
+      if (/rails/i.test(content) && !stack.backendFramework.includes('Ruby on Rails')) stack.backendFramework.push('Ruby on Rails');
+      if (/sinatra/i.test(content) && !stack.backendFramework.includes('Sinatra')) stack.backendFramework.push('Sinatra');
+      
+      // Databases
+      if (/pg/i.test(content) && !stack.database.includes('PostgreSQL')) stack.database.push('PostgreSQL');
+      if (/mysql/i.test(content) && !stack.database.includes('MySQL')) stack.database.push('MySQL');
+      
+      // Testing
+      if (/rspec/i.test(content) && !stack.testing.includes('RSpec')) stack.testing.push('RSpec');
+    }
+  }
+  
+  // =======================
+  // PHP (Laravel)
+  // =======================
+  let composerFile = tree.find(f => f.path.endsWith('composer.json'));
+  if (composerFile) {
+    if (!stack.backendLanguage.includes('PHP')) stack.backendLanguage.push('PHP');
+    
+    const content = await fetchFile(composerFile);
+    if (content) {
+      if (/laravel\/framework/i.test(content) && !stack.backendFramework.includes('Laravel')) stack.backendFramework.push('Laravel');
+      if (/symfony/i.test(content) && !stack.backendFramework.includes('Symfony')) stack.backendFramework.push('Symfony');
+      
+      // Databases
+      if (/doctrine/i.test(content)) stack.orm = 'Doctrine';
+      if (/eloquent/i.test(content)) stack.orm = 'Eloquent';
+    }
+  }
+  
+  // =======================
+  // Flutter
+  // =======================
+  let pubspecFile = tree.find(f => f.path.endsWith('pubspec.yaml'));
+  if (pubspecFile) {
+    if (!stack.mobileFramework.includes('Flutter')) stack.mobileFramework.push('Flutter');
+    if (!stack.backendLanguage.includes('Dart')) stack.backendLanguage.push('Dart');
+  }
+  
+  // =======================
+  // Android (Kotlin/Java)
+  // =======================
+  let androidManifest = tree.find(f => f.path.endsWith('AndroidManifest.xml'));
+  if (androidManifest) {
+    if (!stack.mobileFramework.includes('Android Native')) stack.mobileFramework.push('Android Native');
+    
+    // Check for Kotlin
+    if (tree.some(f => f.path.endsWith('.kt'))) {
+      if (!stack.backendLanguage.includes('Kotlin')) stack.backendLanguage.push('Kotlin');
+    }
+  }
+  
+  // =======================
+  // iOS (Swift)
+  // =======================
+  let iosProject = tree.find(f => f.path.includes('.xcodeproj/') || f.path.endsWith('Podfile'));
+  if (iosProject) {
+    if (!stack.mobileFramework.includes('iOS Native')) stack.mobileFramework.push('iOS Native');
+    
+    // Check for Swift
+    if (tree.some(f => f.path.endsWith('.swift'))) {
+      if (!stack.backendLanguage.includes('Swift')) stack.backendLanguage.push('Swift');
+    }
   }
   
   return stack;
 }
+
+// ============================================================================
+// FILE SELECTION - Enhanced for all patterns
+// ============================================================================
 
 function selectFiles(
   tree: GitHubTreeItem[],
@@ -265,19 +615,33 @@ function selectFiles(
   techStack: any
 ): string[] {
   const selected: string[] = [];
-  const maxFiles = 50;
+  const maxFiles = 60; // Increased from 50
   
+  // Root configs
   const rootConfigs = tree
     .filter(t => t.type === 'blob' && !t.path.includes('/'))
     .filter(t => 
       t.path === 'package.json' ||
       t.path === 'README.md' ||
-      t.path === 'docker-compose.yml'
+      t.path === 'docker-compose.yml' ||
+      t.path === 'docker-compose.yaml' ||
+      t.path === 'Dockerfile' ||
+      t.path === 'requirements.txt' ||
+      t.path === 'go.mod' ||
+      t.path === 'pom.xml' ||
+      t.path === 'build.gradle' ||
+      t.path === 'Cargo.toml' ||
+      t.path === 'Gemfile' ||
+      t.path === 'composer.json' ||
+      t.path === 'pubspec.yaml'
     )
     .map(t => t.path);
   
   selected.push(...rootConfigs);
   
+  // ========================================
+  // BACKEND FILES
+  // ========================================
   for (const backendFolder of structure.backend) {
     const prefix = backendFolder ? backendFolder + '/' : '';
     const backendFiles = tree.filter(t => 
@@ -285,48 +649,73 @@ function selectFiles(
       t.path.startsWith(prefix)
     );
     
+    // Config files
     const configs = backendFiles.filter(f =>
       f.path === `${prefix}package.json` ||
       f.path === `${prefix}Dockerfile` ||
       f.path === `${prefix}requirements.txt` ||
-      f.path === `${prefix}go.mod`
+      f.path === `${prefix}go.mod` ||
+      f.path === `${prefix}pom.xml` ||
+      f.path === `${prefix}build.gradle` ||
+      f.path === `${prefix}Cargo.toml` ||
+      f.path === `${prefix}Gemfile` ||
+      f.path === `${prefix}composer.json` ||
+      f.path === `${prefix}.env.example`
     ).map(f => f.path);
     
     selected.push(...configs);
     
+    // Entry points (support multiple languages)
     const entries = backendFiles.filter(f =>
-      f.path.match(new RegExp(`${prefix}(index|app|server|main)\\.(js|ts|py|go)$`))
-    ).slice(0, 2).map(f => f.path);
+      // Node.js/TypeScript
+      f.path.match(new RegExp(`${prefix}(index|app|server|main)\\.(js|ts)$`)) ||
+      // Python
+      f.path.match(new RegExp(`${prefix}(main|app|wsgi|asgi|manage)\\.py$`)) ||
+      // Go
+      f.path.match(new RegExp(`${prefix}(main|cmd/.*)\\.go$`)) ||
+      // Java
+      f.path.match(new RegExp(`${prefix}.*Application\\.java$`)) ||
+      // Rust
+      f.path.match(new RegExp(`${prefix}src/main\\.rs$`)) ||
+      // PHP
+      f.path.match(new RegExp(`${prefix}(index|artisan)\\.php$`)) ||
+      // Ruby
+      f.path.match(new RegExp(`${prefix}(config\\.ru|application\\.rb)$`))
+    ).slice(0, 3).map(f => f.path);
     
     selected.push(...entries);
     
-    // TODO: change controllers to routeFiles, after service config changes
-    const keyFolders = ['controllers', 'services', 'models', 'config'];
+    // ALL route/controller files (no limit)
+    const routeFiles = backendFiles.filter(f =>
+      /(routes|controllers|endpoints|handlers|api|views)\//i.test(f.path) &&
+      /\.(js|ts|py|go|rs|java|rb|php)$/.test(f.path) &&
+      !/\.(test|spec)\.(js|ts)$/.test(f.path)
+    ).map(f => f.path);
+    
+    console.log(`📍 Found ${routeFiles.length} route files in ${backendFolder || 'root'}`);
+    selected.push(...routeFiles);
+    
+    // Sample from other key folders
+    const keyFolders = [
+      'services', 'models', 'config', 'middleware', 'utils',
+      'repositories', 'domain', 'entities', 'dto', 'schemas',
+      'lib', 'pkg', 'internal' // Go patterns
+    ];
     
     for (const folder of keyFolders) {
       const folderFiles = backendFiles.filter(f =>
         f.path.includes(`/${folder}/`) &&
-        (f.path.endsWith('.js') || f.path.endsWith('.ts') || f.path.endsWith('.py'))
+        /\.(js|ts|py|go|rs|java|rb|php)$/.test(f.path) &&
+        !/\.(test|spec)\.(js|ts)$/.test(f.path)
       ).slice(0, 2).map(f => f.path);
       
       selected.push(...folderFiles);
     }
-
-    // ========================================
-     // ALL ROUTE FILES (NO LIMIT)
-     // ========================================
-     const routeFiles = backendFiles.filter(f =>
-       /(routes|endpoints|handlers|api)\//i.test(f.path) &&
-       /\.(js|ts|py|go|rs)$/.test(f.path) &&
-       !/\.(test|spec)\.(js|ts)$/.test(f.path)  // Exclude tests
-     ).map(f => f.path);
-  
-     
-     console.log(`📍 Found ${routeFiles.length} route files in ${backendFolder || 'root'}`);
-     selected.push(...routeFiles);
   }
-
   
+  // ========================================
+  // FRONTEND FILES
+  // ========================================
   for (const frontendFolder of structure.frontend) {
     const prefix = frontendFolder + '/';
     const frontendFiles = tree.filter(t => 
@@ -334,31 +723,87 @@ function selectFiles(
       t.path.startsWith(prefix)
     );
     
+    // Config files
     const configs = frontendFiles.filter(f =>
-      f.path === `${prefix}package.json`      ||
-      f.path === `${prefix}vite.config.js`    ||
-      f.path === `${prefix}vite.config.ts`    ||
-      f.path === `${prefix}next.config.js`    ||
-      f.path === `${prefix}tsconfig.json`     ||
-      f.path === `${prefix}angular.json`      ||
-      f.path === `${prefix}svelte.config.js`  ||
-      f.path === `${prefix}astro.config.mjs`
+      f.path === `${prefix}package.json` ||
+      f.path === `${prefix}vite.config.js` ||
+      f.path === `${prefix}vite.config.ts` ||
+      f.path === `${prefix}next.config.js` ||
+      f.path === `${prefix}nuxt.config.js` ||
+      f.path === `${prefix}tsconfig.json` ||
+      f.path === `${prefix}angular.json` ||
+      f.path === `${prefix}svelte.config.js` ||
+      f.path === `${prefix}astro.config.mjs` ||
+      f.path === `${prefix}vue.config.js` ||
+      f.path === `${prefix}tailwind.config.js`
     ).map(f => f.path);
     
     selected.push(...configs);
     
+    // Entry points
     const entry = frontendFiles.find(f =>
       f.path.endsWith('/src/App.tsx') ||
       f.path.endsWith('/src/App.jsx') ||
-      f.path.endsWith('/src/main.tsx')
+      f.path.endsWith('/src/App.vue') ||
+      f.path.endsWith('/src/main.tsx') ||
+      f.path.endsWith('/src/main.ts') ||
+      f.path.endsWith('/src/index.tsx') ||
+      f.path.endsWith('/pages/index.tsx') ||
+      f.path.endsWith('/app/page.tsx')
     );
     
     if (entry) selected.push(entry.path);
   }
   
+  // ========================================
+  // MOBILE FILES
+  // ========================================
+  for (const mobileFolder of structure.mobile) {
+    const prefix = mobileFolder + '/';
+    const mobileFiles = tree.filter(t => 
+      t.type === 'blob' && 
+      t.path.startsWith(prefix)
+    );
+    
+    // Flutter
+    const flutterConfig = mobileFiles.find(f => f.path.endsWith('pubspec.yaml'));
+    if (flutterConfig) {
+      selected.push(flutterConfig.path);
+      
+      const mainDart = mobileFiles.find(f => f.path.endsWith('/lib/main.dart'));
+      if (mainDart) selected.push(mainDart.path);
+    }
+    
+    // React Native
+    const rnConfig = mobileFiles.find(f => 
+      f.path.endsWith('app.json') || 
+      f.path.endsWith('metro.config.js')
+    );
+    if (rnConfig) selected.push(rnConfig.path);
+    
+    // Android
+    const androidManifest = mobileFiles.find(f => 
+      f.path.endsWith('AndroidManifest.xml')
+    );
+    if (androidManifest) selected.push(androidManifest.path);
+    
+    // iOS
+    const infoPlist = mobileFiles.find(f => f.path.endsWith('Info.plist'));
+    if (infoPlist) selected.push(infoPlist.path);
+  }
+  
   const unique = [...new Set(selected)];
+  console.log(`📁 Total files selected: ${unique.length}`);
+  console.log(`   - Route files: ${unique.filter(f => /(routes|controllers|handlers)\//.test(f)).length}`);
+  console.log(`   - Config files: ${unique.filter(f => /\.(json|yaml|toml|xml)$/.test(f)).length}`);
+  console.log(`   - Source files: ${unique.filter(f => /\.(js|ts|py|go|java|rb|php|dart|swift|kt)$/.test(f)).length}`);
+  
   return unique.slice(0, maxFiles);
 }
+
+// ============================================================================
+// SHOULD GENERATE README - Enhanced patterns
+// ============================================================================
 
 export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; value: boolean} {
   
@@ -371,6 +816,10 @@ export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; 
     /\.vscode\//,      // Editor configs
     /\.idea\//,        // IDE configs
     /\.gitignore/,     // Git ignore
+    /\.editorconfig/,  // Editor config
+    /\.prettierrc/,    // Prettier
+    /\.eslintrc/,      // ESLint
+    /\.env\.example/,  // Example env files
   ];
   
   const meaningfulChanges = changedFiles.filter(file => 
@@ -382,65 +831,90 @@ export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; 
     return {files: [], value: false};
   }
   
-  // Generate if:
-  // - package.json changed (tech stack)
-  // - New files added in key folders (routes, services, models)
-  // - Entry points modified (app.js, index.ts)
-  // - Dockerfile or requirements.txt changed (deployment)
-  // - go.mod changed (Go projects)
-  // - New folders are added
-  
+  // Significant patterns for all tech stacks
   const significantPatterns = [
-
-  // Dependency / package managers
-  /package\.json$/,
-  /package-lock\.json$/,
-  /yarn\.lock$/,
-  /pnpm-lock\.yaml$/,
-  /requirements\.txt$/,
-  /Pipfile$/,
-  /Pipfile\.lock$/,
-  /go\.mod$/,
-  /go\.sum$/,
-  /pom\.xml$/,
-  /build\.gradle$/,
-  /settings\.gradle$/,
-  /Gemfile$/,
-  /Gemfile\.lock$/,
-  /composer\.json$/,
-  /composer\.lock$/,
-  /Cargo\.toml$/,
-  /Cargo\.lock$/,
-
-  // Entry point files
-  /(index|app|server|main)\.(js|ts|py|go|java|rb)$/,
-
-  // Core backend directories
-  /(routes|services|models|controllers|handlers|middleware)\/.+\.(js|ts|py|go|java|rb)$/,
-
-  // Source directories
-  /(src|cmd|internal|pkg|lib|app)\/.+\.(js|ts|py|go|java|rb)$/,
-
-  // Infrastructure / container
-  /Dockerfile$/,
-  /docker-compose\.yml$/,
-  /docker-compose\.yaml$/,
-  /\.github\/workflows\/.+\.yml$/,
-
-  // Config files
-    /\.env\..+/,
-  /config\/.+\.(js|ts|json|yaml|yml)$/,
-
-];
+    
+    // ===== DEPENDENCY FILES =====
+    /package\.json$/,
+    /package-lock\.json$/,
+    /yarn\.lock$/,
+    /pnpm-lock\.yaml$/,
+    /requirements\.txt$/,
+    /Pipfile$/,
+    /Pipfile\.lock$/,
+    /pyproject\.toml$/,
+    /poetry\.lock$/,
+    /go\.mod$/,
+    /go\.sum$/,
+    /pom\.xml$/,
+    /build\.gradle$/,
+    /settings\.gradle$/,
+    /Gemfile$/,
+    /Gemfile\.lock$/,
+    /composer\.json$/,
+    /composer\.lock$/,
+    /Cargo\.toml$/,
+    /Cargo\.lock$/,
+    /pubspec\.yaml$/,
+    /pubspec\.lock$/,
+    
+    // ===== ENTRY POINTS =====
+    // Node.js/TypeScript
+    /(index|app|server|main)\.(js|ts)$/,
+    // Python
+    /(main|app|wsgi|asgi|manage)\.py$/,
+    // Go
+    /main\.go$/,
+    /cmd\/.*\.go$/,
+    // Java
+    /.*Application\.java$/,
+    // Rust
+    /src\/main\.rs$/,
+    // PHP
+    /(index|artisan)\.php$/,
+    // Ruby
+    /(config\.ru|application\.rb)$/,
+    
+    // ===== BACKEND DIRECTORIES =====
+    /(routes|controllers|handlers|endpoints|api|views)\/.+\.(js|ts|py|go|java|rb|php|rs)$/,
+    /(services|repositories|models|entities|dto|schemas)\/.+\.(js|ts|py|go|java|rb|php|rs)$/,
+    /(middleware|guards|interceptors|filters)\/.+\.(js|ts|py|go|java|rb|php|rs)$/,
+    
+    // ===== SOURCE DIRECTORIES =====
+    /(src|cmd|internal|pkg|lib|app)\/.+\.(js|ts|py|go|java|rb|php|rs|dart|swift|kt)$/,
+    
+    // ===== INFRASTRUCTURE =====
+    /Dockerfile$/,
+    /docker-compose\.ya?ml$/,
+    /\.github\/workflows\/.+\.ya?ml$/,
+    /\.gitlab-ci\.ya?ml$/,
+    /kubernetes\/.+\.ya?ml$/,
+    /helm\/.+\.ya?ml$/,
+    
+    // ===== CONFIG FILES =====
+    /config\/.+\.(js|ts|json|yaml|yml|toml|xml)$/,
+    /\.env$/,
+    
+    // ===== DATABASE =====
+    /(migrations|seeds|seeders)\/.+\.(js|ts|py|sql)$/,
+    /prisma\/schema\.prisma$/,
+    
+    // ===== MOBILE =====
+    /AndroidManifest\.xml$/,
+    /Info\.plist$/,
+    /app\.json$/,
+    /lib\/main\.dart$/,
+  ];
   
   const hasSignificantChanges = meaningfulChanges.filter(file =>
     significantPatterns.some(pattern => pattern.test(file))
   );
   
   if (hasSignificantChanges.length === 0) {
-    console.log('⏭️  Skipping: Changes not significant enough');
+    console.log('⏭️  Skipping: Changes not significant enough for README update');
     return {files: [], value: false};
   }
   
+  console.log(`✅ ${hasSignificantChanges.length} significant changes detected`);
   return {files: hasSignificantChanges, value: true};
 }
