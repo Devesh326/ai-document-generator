@@ -9,6 +9,9 @@ import fs from 'fs';
 import { App } from '@octokit/app';
 import { createPullRequest } from "octokit-plugin-create-pull-request";
 import { Octokit } from "@octokit/core";
+import pLimit from "p-limit";
+
+const limit = pLimit(5); // const limit = pLimit(5);
 
 
 const MyOctokit = Octokit.plugin(createPullRequest);
@@ -33,7 +36,7 @@ async function getOctokit(installationId: number): Promise<any> {
 // import { generateReadme } from '../services/llm';
 // import { createPullRequest } from '../services/github';
 
-docQueue.process(async (job) => {
+docQueue.process(5, async (job) => {
 //   const { owner, repo, repoId, commitSha, installationId } = job.data;
 
 const {ref, repoId, owner, repoName, installation_id, commits, repository, afterCommitSha } = job.data;
@@ -166,18 +169,36 @@ console.log("commits:", commits);
         console.log('📥 Fetching file contents...');
 
         
-        for (const filePath of analysis.selectedFiles) {
+        // for (const filePath of analysis.selectedFiles) {
             
-            let content = await fetchFileContent(octokit, owner, repoName, filePath);
-            if (content) {
-                filesWithContent.push({
-                path: filePath,
-                // content: content.split('\n').slice(0,200).join('\n'),
-                content: content.substring(0, 2000),
-                truncated: content.length > 2000
-                });
-            }
-        }
+        //     let content = await fetchFileContent(octokit, owner, repoName, filePath);
+        //     if (content) {
+        //         filesWithContent.push({
+        //         path: filePath,
+        //         // content: content.split('\n').slice(0,200).join('\n'),
+        //         content: content.substring(0, 2000),
+        //         truncated: content.length > 2000
+        //         });
+        //     }
+        // }
+
+        const filePromises = analysis.selectedFiles.map(filePath =>
+        limit(async () => {
+            const content = await fetchFileContent(octokit, owner, repoName, filePath);
+
+            if (!content) return null;
+
+            return {
+            path: filePath,
+            content: content.substring(0, 2000),
+            truncated: content.length > 2000
+            };
+        })
+        );
+
+        const results = await Promise.all(filePromises);
+
+        filesWithContent.push(...results.filter(Boolean));
         
         console.log(`✅ Fetched ${filesWithContent.length} files`);
     }
