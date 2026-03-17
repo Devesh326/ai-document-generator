@@ -93,12 +93,8 @@ console.log("commits:", commits);
   
     // 4. Get GitHub client
     // const octokit = await getOctokit(installationId);
-    console.log("==========HERE==========");
-    
-    
-    // 5. Analyze repo (same logic for both first time and update)
-    // first time, complete analysis
-        console.log('📊 Analyzing repository...');
+
+    console.log('📊 Analyzing repository...');
 
         
         try {
@@ -113,7 +109,7 @@ console.log("commits:", commits);
         JSON.stringify(analysis);
         
 
-        console.log(`✅ Selected ${analysis.selectedFiles.length} files`);
+        // console.log(`✅ Selected ${analysis.selectedFiles.length} files`);
 
 
         const filesWithContent = [];
@@ -142,23 +138,20 @@ console.log("commits:", commits);
         
     }
 
-    // for (const filePath of analysis.selectedFiles) {
-    //     // if path is routes, endpoints, handlers, or api, then we put entire content to it.
-    //         let content = await fetchFileContent(octokit, owner, repoName, filePath);
-    //         // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
-
-    //         if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/')){
-    //             console.log(`=====Content for ${filePath} ======`,content);
-    //             if(content){
-    //                 routerSummary.push({
-    //                     path: filePath,
-    //                     content: content,
-    //                     truncated: false
-    //                 });
-    //             }
-    //         }
-    // }
-
+      // Fetch file content related to routes, endpoints, handlers, api, controllers without truncation for better analysis and documentation
+      for (const filePath of analysis.selectedFiles) {
+        let content = await fetchFileContent(octokit, owner, repoName, filePath);
+        // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+        if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/') || filePath.includes('controllers/')){
+            if(content){
+                routerSummary.push({
+                    path: filePath,
+                    content: content,
+                    truncated: false
+                });
+            }
+        }
+      }
 
     // Logic to get all the changed files
     const changedFiles = []
@@ -168,19 +161,8 @@ console.log("commits:", commits);
         // 6. Fetch file contents
         console.log('📥 Fetching file contents...');
 
-        
-        // for (const filePath of analysis.selectedFiles) {
-            
-        //     let content = await fetchFileContent(octokit, owner, repoName, filePath);
-        //     if (content) {
-        //         filesWithContent.push({
-        //         path: filePath,
-        //         // content: content.split('\n').slice(0,200).join('\n'),
-        //         content: content.substring(0, 2000),
-        //         truncated: content.length > 2000
-        //         });
-        //     }
-        // }
+
+
 
         const filePromises = analysis.selectedFiles.map(filePath =>
         limit(async () => {
@@ -231,8 +213,6 @@ console.log("commits:", commits);
         }
     }
 
-    console.log(map);
-
 
     commits.forEach((commit: { added: string[]; modified: string[]; removed: string[] }) => {
         changedFiles = changedFiles.concat(commit.added, commit.modified, commit.removed);
@@ -256,14 +236,6 @@ console.log("commits:", commits);
     console.log('Significant changes detected. Proceeding with README generation.');
     
     for (const filePath of shouldGenerate.files) {
-        // const content = await fetchFileContent(octokit, owner, repoName, filePath);
-        // if (content) {
-        //     filesWithContent.push({
-        //         path: filePath,
-        //         content: content.substring(0, 2000),
-        //         truncated: content.length > 2000
-        //     });
-        // }
         filesWithContent.push({path: filePath, 
                             content: map.get(filePath).substring(0,2000),
                             truncated: map.get(filePath).length > 2000
@@ -317,13 +289,13 @@ for (const file of filesWithContent) {
   });
 }
 
-console.log("Dependency graph:", JSON.stringify(graph, null, 2));
+// console.log("Dependency graph:", JSON.stringify(graph, null, 2));
 
-const mermaidDiagram = generateMermaidGraph(graph);
-console.log(mermaidDiagram);
+// const mermaidDiagram = generateMermaidGraph(graph);
+// console.log(mermaidDiagram);
 
-  const depAnalysis = generateDependencyAnalysis(graph, filesWithContent);
-  console.log(depAnalysis);
+//   const depAnalysis = generateDependencyAnalysis(graph, filesWithContent);
+//   console.log(depAnalysis);
 
 
 // /*
