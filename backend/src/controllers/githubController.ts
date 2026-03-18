@@ -65,10 +65,10 @@ const githubRepoTopLevelGet = async (octokit: any, owner: String, repoName: Stri
     );
     
     // Fetch file helper
-    console.log("just before the fetch file helper function");
+    // console.log("just before the fetch file helper function");
     
     const fetchFile = async (pkg: any): Promise<string | null> => {
-        console.log("inside the fetch file helper function");
+        // console.log("inside the fetch file helper function");
         
       try {
         const data = await octokit.request(`GET /repos/${owner}/${repoName}/git/blobs/${pkg.sha}`, {
@@ -108,7 +108,7 @@ const githubRepoTopLevelGet = async (octokit: any, owner: String, repoName: Stri
     // });
     // console.log("========= ANALYSIS =========", analysis);
     let val = JSON.stringify(analysis);
-    console.log("========= ANALYSIS STRINGIFIED =========", val);
+    // console.log("========= ANALYSIS STRINGIFIED =========", val);
 
     return analysis;
     
@@ -173,7 +173,7 @@ const repositoryGet = async (req: any, res: any) => {
 
 const githubWebhookHandler = async (req: any, res: any) => {
   const data = req.body;
-  console.log("Successfully received the push event", data);
+  // console.log("Successfully received the push event", data);
   
     // need to check if the event triggered is a push event and if the branch is main, then only we will trigger the analysis
     if (data.commits && data.commits.length > 0 && data.ref === 'refs/heads/main') {
@@ -378,7 +378,7 @@ const generateDependencyAnalysis = (graph: any[], files: any[]): string => {
   return summary;
 };
 
-const getChangedFilesWithContent = async (octokit, commit, owner, repoName) => {
+const getChangedFilesWithContent = async (octokit: any, commit: any, owner: any, repoName: any) => {
 
   const map = new Map();
     const data = await octokit.request(`GET /repos/${owner}/${repoName}/commits/${commit.id}`, {
@@ -395,7 +395,7 @@ const getChangedFilesWithContent = async (octokit, commit, owner, repoName) => {
     // console.log(data.data.files);
     const files = data.data.files;
 
-    files.forEach( (file) => map.set(file.filename, file.patch))
+    files.forEach( (file:any) => map.set(file.filename, file.patch))
     
     return map;
 
