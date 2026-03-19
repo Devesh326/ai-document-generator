@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Build outputs (if applicable)
+dist/
+build/
+coverage/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+.aws/
+.ssh/
+
+# Git management
+.git
+.gitignore
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+docs/

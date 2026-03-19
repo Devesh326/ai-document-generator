@@ -3,12 +3,12 @@ import dotenv from "dotenv";
 import githubRouter from "./routes/githubRoute.js"
 import aiRouter from "./routes/aiRoute.js"
 import adminRouter from './routes/adminRoute.js'
-import { getRedisClient } from "./configs/redisConfig.js";
+import { closeRedis, getRedisClient } from "./configs/redisConfig.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-// const redisClient = getRedisClient();
+const PORT = process.env.PORT || 5000;
+const redisClient = getRedisClient();
 app.use(express.json());
 
 app.use("/github", githubRouter);
@@ -26,8 +26,6 @@ app.listen(PORT, () => {
 
 process.on("SIGINT", async () => {
   console.log("Shutting down...");
-
-  await redisClient.quit();
-
+  closeRedis();
   process.exit(0);
 });

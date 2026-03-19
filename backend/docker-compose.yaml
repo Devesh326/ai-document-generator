@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # Redis - Bull Queue Storage
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: readmeai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ========================================
+  # API Server - Express + Webhooks
+  # ========================================
+  api:
+    build:
+      context: ../backend
+      dockerfile: dockerfile
+    container_name: readmeai-api
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      
+      # Supabase PostgreSQL
+      DATABASE_URL: ${DATABASE_URL}
+      
+      # Redis (uses service name "redis")
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      
+      # GitHub App
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_PRIVATE_KEY_PATH: /app/secrets/github-private-key.pem      
+      # Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    
+    volumes:
+      - ${GITHUB_PRIVATE_KEY_PATH}:/app/secrets/github-private-key.pem:ro
+    
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        node dist/server.js
+      "
+
+  # ========================================
+  # Worker - Bull Queue Processor
+  # ========================================
+  worker:
+    build:
+      context: ../backend
+      dockerfile: dockerfile
+    container_name: readmeai-worker
+    environment:
+      NODE_ENV: production
+      
+      # Supabase PostgreSQL
+      DATABASE_URL: ${DATABASE_URL}
+      
+      # Redis (uses service name "redis")
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      
+      # GitHub App
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_PRIVATE_KEY_PATH: /app/secrets/github-private-key.pem
+      
+      # Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    
+    volumes:
+      - ${GITHUB_PRIVATE_KEY_PATH}:/app/secrets/github-private-key.pem:ro
+    
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    command: node dist/worker/readmeWorker.js
+
+# ========================================
+# Volumes - Data Persistence
+# ========================================
+volumes:
+  redis_data:
+    driver: local
