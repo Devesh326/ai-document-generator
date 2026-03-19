@@ -36,7 +36,7 @@ const docQueue = new Queue("doc-processing", {
   redis: {
     host: process.env.REDIS_URL || "127.0.0.1",
     port: 6379,
-    // password: process.env.REDIS_PASSWORD || "UPSTASH_REDIS_PASSWORD",
+    password: process.env.REDIS_PASSWORD || "UPSTASH_REDIS_PASSWORD",
     tls: {}
   },
   defaultJobOptions: {
