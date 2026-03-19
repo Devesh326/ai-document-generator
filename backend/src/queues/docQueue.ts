@@ -33,14 +33,14 @@ const redisConfig = process.env.REDIS_URL
 // ============================================================================
 
 
-const docQueue = new Queue("doc-processing", process.env.REDIS_URL!,{
+const docQueue = new Queue("doc-processing", {
   redis: {
-    maxRetriesPerRequest: null,
-  //   host: "amazed-gull-77479.upstash.io",
-  //   port: 6379,
-  //   username: "default",
-  //   password: process.env.REDIS_PASSWORD,
-  //   tls: {}
+    // maxRetriesPerRequest: null,
+    host: "amazed-gull-77479.upstash.io",
+    port: 6379,
+    username: "default",
+    password: process.env.REDIS_PASSWORD,
+    tls: {}
   },
   defaultJobOptions: {
     // ========================================
