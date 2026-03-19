@@ -37,19 +37,6 @@ export async function generateReadme(
   type: 'initial' | 'update',
   routerSummary?: any[]
 ): Promise<string> {
-  
-
-  // Generate dependency analysis summary
-  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
-  
-  // Generate mermaid diagram (only if graph is reasonable size)
-  const mermaidDiagram = dependencyGraph.length < 50 
-    ? generateMermaidGraph(dependencyGraph)
-    : '';
-  // const mermaidDiagram = generateMermaidGraph(dependencyGraph);
-
-  // need to perfect this as well, highly dependent on the code changes
-  // const mermaidDiagram = '';
 
   const filesSummary = files.map((f: any) => `
 ### ${f.path}
@@ -61,6 +48,15 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
   let prompt = '';
   
   if (type === 'initial' || !existingReadme) {
+    
+  // Generate dependency analysis summary
+  const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
+  
+  // Generate mermaid diagram (only if graph is reasonable size)
+  const mermaidDiagram = dependencyGraph.length < 50 
+    ? generateMermaidGraph(dependencyGraph)
+    : '';
+    
     // First time - generate from scratch
     prompt = `You are a technical documentation expert. Generate a comprehensive README.md for this repository.
 
@@ -151,10 +147,12 @@ ${existingReadme}
 
 RECENT CODE CHANGES (Git Diffs):
 
-The following files were modified recently. They represent only a subset of the repository.
+The following files were modified. Lines with '+' are additions, lines with '-' are deletions.
 
+⚠️ CRITICAL: These diffs show ONLY the changed files, NOT the entire repository.
 Do NOT recompute the entire architecture from these files.
 Use them only to update sections that are clearly affected.
+
 ${filesSummary}
 
 -----
@@ -163,14 +161,6 @@ CURRENT TECH STACK:
 ${JSON.stringify(analysis.metadata.techStack, null, 2)}
 ⚠️ Update Tech Stack section if dependencies changed.
 
-------
-
-${depAnalysis}
-
-${mermaidDiagram ? `UPDATED ARCHITECTURE:\n${mermaidDiagram}\n` : ''}
-IMPORTANT:
-- Only add features that are clearly mentioned by '+' lines in the diffs. Do NOT infer features that aren't explicitly added.
-- DO NOT remove any features unless they are clearly removed in the diffs with '-' lines.
 ------
 
 ${routerSummary ? `
@@ -190,16 +180,33 @@ If API Documentation section doesn't exist but endpoints are detected:
 - Use the same format as described in the initial generation
 ` : ''}
 
-UPDATE STRATEGY:
 
-1. **Analyze the diffs** to understand what changed:
-   - Lines with '+' are additions
-   - Lines with '-' are deletions
-   - Focus on user-facing changes (new features, API changes, breaking changes)
+UPDATE INSTRUCTIONS:
 
-2. **Update ONLY affected sections:**
-   - Features (if new capabilities added)
-   
+**1. Architecture Section:**
+
+The README already has a complete architecture diagram showing all files.
+
+For the Mermaid diagram:
+- Look at the diffs above
+- If files were ADDED (+ lines):
+  * Add them as new nodes in the diagram
+  * Add their import connections (look at the import statements in the code)
+- If files were DELETED (- lines):
+  * Remove those nodes from the diagram
+  * Remove their connections
+- If files were MODIFIED (changed content, same filename):
+  * Keep the node, update connections if imports changed
+
+For the folder structure description:
+- Update ONLY if new top-level folder appeared (workers/, cache/, etc.)
+- Otherwise keep as is
+
+**2. Features Section:**
+- Add features ONLY if explicitly shown in + lines
+- Don't remove unless explicitly shown in - lines
+
+
 3. **Preserve everything else:**
    - All custom content (badges, images, examples, links)
    - User-written descriptions and explanations
@@ -215,6 +222,15 @@ UPDATE STRATEGY:
    - Keep the same tone and formatting
    - Don't change the README structure
    - Don't add unnecessary sections
+
+
+   DECISION RULES:
+
+- Bug fixes / refactoring / internal changes → Don't update
+- New user-facing capability → Update Features
+- New endpoint → Update API docs
+- New major folder → Update Architecture structure
+- New file in existing folder → Update Architecture diagram only
 
 ---
 

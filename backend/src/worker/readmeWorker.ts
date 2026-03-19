@@ -394,7 +394,8 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     tls: {}
   },
   concurrency: 3,
-  lockDuration: 360000,    
+  lockDuration: 360000,  
+  drainDelay: 10000,  
 });
 
 
