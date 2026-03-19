@@ -38,7 +38,7 @@ graph LR
 ## Prerequisites
 
 *   Node.js (v20+)
-*   Redis server
+*   Redis server (e.g., Upstash)
 *   PostgreSQL database
 *   Gemini API Key
 
@@ -61,6 +61,7 @@ graph LR
     DATABASE_URL="your_database_connection_string"
     GEMINI_API_KEY="your_google_ai_api_key"
     REDIS_URL="redis://localhost:6379"
+    REDIS_PASSWORD="your_redis_password"
     GITHUB_APP_ID="your_github_app_id"
     GITHUB_PRIVATE_KEY_PATH="/path/to/your/private-key.pem"
     ```
