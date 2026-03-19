@@ -12,7 +12,7 @@ if (!GEMINI_API_KEY) {
 // The client gets the API key from the environment variable `GEMINI_API_KEY`.
 const ai = new GoogleGenAI({});
 
-async function test( req, res) {
+async function test( req : any, res: any) {
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite-preview",
     contents: "Explain how AI works in a few words 30 to be exact, amaze me",
@@ -104,77 +104,22 @@ ${mermaidDiagram ? '   - Include the provided mermaid diagram' : '   - Describe 
 
 6. **API Documentation** ${routerSummary ? '(REQUIRED - endpoints detected)' : '(skip if no API)'}
    ${routerSummary ? `
-   Use this structure:
+   The following API endpoints were detected:
+   ${routerSummary}
    
-   ### Base URL
-   \`\`\`
-   http://localhost:PORT/api/v1
-   \`\`\`
+   Document these endpoints clearly:
+   - Group by resource (Users, Posts, Auth, etc.)
+   - Include HTTP method and path for each endpoint
+   - Infer request/response structure from route handler code and controller logic
+   - If authentication is required, mention it
+   - Include the base URL pattern if one exists (e.g., /api/v1 or /api)
+   - Add brief descriptions based on route names and handlers
    
-   ### Authentication
-   (If auth routes exist, explain the auth mechanism)
-   
-   ### Endpoints
-   
-   Group by resource. For each endpoint:
-   
-   #### Resource Name
-   
-   **Method Path** - Description
-   
-   \`\`\`json
-   // Request (if applicable)
-   {
-     "field": "value"
-   }
-   \`\`\`
-   
-   \`\`\`json
-   // Response
-   {
-     "status": "success",
-     "data": {}
-   }
-   \`\`\`
-   
-   Example:
-   
-   #### Users
-   
-   **GET /users** - Retrieve all users
-   
-   \`\`\`json
-   // Response
-   {
-     "status": "success",
-     "data": [
-       { "id": 1, "name": "John", "email": "john@example.com" }
-     ]
-   }
-   \`\`\`
-   
-   **POST /users** - Create new user
-   
-   \`\`\`json
-   // Request
-   {
-     "name": "John Doe",
-     "email": "john@example.com",
-     "password": "securepass"
-   }
-   \`\`\`
-   
-   \`\`\`json
-   // Response
-   {
-     "status": "success",
-     "data": {
-       "id": 1,
-       "name": "John Doe",
-       "email": "john@example.com"
-     }
-   }
-   \`\`\`
+   Format:
+   - Use clear section headers for each resource
+   - Show example requests for POST/PUT/PATCH endpoints
+   - Show example responses with realistic field names
+   - Keep examples concise but informative
    ` : ''}
 
 7. **Project Structure**
@@ -230,11 +175,13 @@ ${routerSummary ? `
 UPDATED API ENDPOINTS:
 ${routerSummary}
 IMPORTANT: If the API Documentation section exists in the README:
-- Update it with the new endpoints listed above
-- Remove endpoints that no longer exist
-- Add new endpoints
-- Preserve the existing format and structure
-- Keep any custom descriptions or examples the user added
+Update it as follows:
+- Compare detected endpoints with documented endpoints
+- Add any NEW endpoints that aren't documented
+- Remove any DELETED endpoints that no longer exist
+- Update endpoint descriptions if handler code changed
+- Preserve any custom examples or notes the user added
+- Keep the same formatting style as the existing API docs section
 
 If API Documentation section doesn't exist but endpoints are detected:
 - Add a new API Documentation section
@@ -288,7 +235,7 @@ Return the updated README in markdown format.`;
       },
     }
   });
-  return response?.text;
+  return response?.text ?? 'null';
 }
 catch (err){
   console.log("Error in generating response from gemini", err)
