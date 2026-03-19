@@ -1,4 +1,7 @@
 import Queue from "bull";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // ============================================================================
 // Redis Connection Configuration
@@ -29,8 +32,14 @@ const redisConfig = process.env.REDIS_URL
 // Create Bull Queue
 // ============================================================================
 
-const docQueue = new Queue("doc-processing", {
-  ...redisConfig,
+const docQueue = new Queue("doc-processing", process.env.REDIS_URL!, {
+  redis: {
+    tls: {
+      rejectUnauthorized: false,  // Required for Upstash
+    },
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: null,
+  },
   defaultJobOptions: {
     // ========================================
     // RETRY CONFIGURATION (Problem 1 Fix)
