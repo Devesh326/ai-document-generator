@@ -168,7 +168,9 @@ ${JSON.stringify(analysis.metadata.techStack, null, 2)}
 ${depAnalysis}
 
 ${mermaidDiagram ? `UPDATED ARCHITECTURE:\n${mermaidDiagram}\n` : ''}
-
+IMPORTANT:
+- Only add features that are clearly mentioned by '+' lines in the diffs. Do NOT infer features that aren't explicitly added.
+- DO NOT remove any features unless they are clearly removed in the diffs with '-' lines.
 ------
 
 ${routerSummary ? `
@@ -201,7 +203,7 @@ UPDATE STRATEGY:
 3. **Preserve everything else:**
    - All custom content (badges, images, examples, links)
    - User-written descriptions and explanations
-   - Architecture diagrams (unless major structural changes)
+   - Architecture diagrams (unless clearly mentioned in diff files)
    - Contributing guidelines, License, etc.
 
 4. **Skip update if:**
