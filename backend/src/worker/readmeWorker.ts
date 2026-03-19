@@ -5,7 +5,6 @@ import prisma from '../models/prisma.js';
 import { createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, getChangedFilesWithContent, githubRepoTopLevelGet } from '../controllers/githubController.js';
 import { shouldGenerateReadme } from '../services/analyzer.js';
 import { generateReadme } from '../services/aiGenerator.js';
-import fs from 'fs';
 import { App } from '@octokit/app';
 import { createPullRequest } from "octokit-plugin-create-pull-request";
 import { Octokit } from "@octokit/core";
@@ -22,7 +21,7 @@ dotenv.config();
 
 const app = new App({
   appId: process.env.GITHUB_APP_ID!,
-  privateKey: fs.readFileSync(process.env.GITHUB_PRIVATE_KEY_PATH!, 'utf8'),
+  privateKey: process.env.GITHUB_PRIVATE_KEY!.replace(/\\n/g, '\n'),
   Octokit: MyOctokit,
 });
 
