@@ -9,7 +9,7 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 *   **Dependency Analysis:** Automatically identifies project dependencies and summarizes key libraries and modules.
 *   **Automated Diagrams:** Generates Mermaid.js diagrams to visualize project structure and dependency graphs.
 *   **Webhook Integration:** Automatically triggers documentation updates via GitHub webhooks.
-*   **Queue Management:** Uses Redis and BullMQ to handle documentation generation tasks asynchronously with concurrent processing, ensuring high scalability and performance.
+*   **Queue Management:** Uses Redis and BullMQ to handle documentation generation tasks asynchronously with concurrent processing, including an admin interface for monitoring and retrying jobs.
 *   **Incremental Updates:** Supports both initial `README.md` generation and updates to existing files while preserving custom content.
 
 ## Tech Stack
@@ -26,18 +26,18 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 ```mermaid
 graph LR
   subgraph backend
-    backend_src_controllers_githubController --> backend_src_services_fileSelector
-    backend_src_controllers_githubController --> backend_src_services_analyzer
-    backend_src_controllers_githubController --> backend_src_queues_docQueue
-    backend_src_services_aiGenerator --> backend_src_controllers_githubController
-    backend_src_routes_aiRoute --> backend_src_services_aiGenerator
-    backend_src_routes_githubRoute --> backend_src_controllers_githubController
+    backend_src_routes_adminRoute --> backend_src_queues_docQueue
+    backend_src_app --> backend_src_routes_githubRoute
+    backend_src_app --> backend_src_routes_aiRoute
+    backend_src_app --> backend_src_routes_adminRoute
+    backend_src_app --> backend_src_configs_redisConfig
   end
 ```
 
 ## Prerequisites
 
 *   Node.js (v20+)
+*   Docker & Docker Compose
 *   Redis server (e.g., Upstash)
 *   PostgreSQL database
 *   Gemini API Key
@@ -66,25 +66,29 @@ graph LR
     GITHUB_PRIVATE_KEY_PATH="/path/to/your/private-key.pem"
     ```
 
-4.  **Database Setup:**
+4.  **Running with Docker:**
     ```bash
-    npx prisma generate
-    npx prisma migrate dev
+    docker-compose up -d
     ```
 
-5.  **Running the Application:**
+5.  **Running Locally:**
+    *   Database Setup:
+        ```bash
+        npx prisma generate
+        npx prisma migrate dev
+        ```
     *   Start the API server:
         ```bash
         npm run dev
         ```
-    *   Start the background worker for document generation:
+    *   Start the background worker:
         ```bash
         npm run worker
         ```
 
 ## Usage
 
-The application exposes REST endpoints to trigger repository analysis and documentation generation:
+The application exposes REST endpoints to trigger repository analysis, documentation generation, and queue management:
 
 *   **Analyze Repository:** `GET /repository?owner=<owner>&repo=<repo>`
     Triggers an analysis of the specified GitHub repository.
@@ -92,6 +96,14 @@ The application exposes REST endpoints to trigger repository analysis and docume
     Endpoint configured for GitHub to send events. Processes repository changes automatically.
 *   **Path Analysis:** `GET /path`
     Returns the file structure of a specific repository.
+*   **Queue Stats:** `GET /admin/queue/stats`
+    Returns current counts for waiting, active, completed, and failed jobs.
+*   **Retry Failed Jobs:** `POST /admin/queue/retry-failed`
+    Attempts to re-process all failed jobs in the queue.
+*   **Clean Queue:** `POST /admin/queue/clean`
+    Removes old, processed jobs from the queue history.
+*   **List Failed Jobs:** `GET /admin/queue/failed`
+    Returns a detailed list of failed jobs and their error messages.
 
 ## Project Structure
 
@@ -100,7 +112,7 @@ backend/
 ├── src/
 │   ├── controllers/    # Request handlers for GitHub webhooks and API routes
 │   ├── models/         # Prisma schemas and interface definitions
-│   ├── queues/         # Bull queue configurations for background jobs
+│   ├── queues/         # BullMQ queue configurations for background jobs
 │   ├── routes/         # Express route definitions
 │   ├── services/       # Core logic (AI generation, repo analysis, file selection)
 │   └── worker/         # Background worker logic for processing queues
