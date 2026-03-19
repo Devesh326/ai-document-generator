@@ -138,20 +138,6 @@ console.log("commits:", commits);
         
     }
 
-      // Fetch file content related to routes, endpoints, handlers, api, controllers without truncation for better analysis and documentation
-      for (const filePath of analysis.selectedFiles) {
-        let content = await fetchFileContent(octokit, owner, repoName, filePath);
-        // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
-        if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/') || filePath.includes('controllers/')){
-            if(content){
-                routerSummary.push({
-                    path: filePath,
-                    content: content,
-                    truncated: false
-                });
-            }
-        }
-      }
 
     // Logic to get all the changed files
     const changedFiles = []
@@ -161,7 +147,20 @@ console.log("commits:", commits);
         // 6. Fetch file contents
         console.log('📥 Fetching file contents...');
 
-
+      // Fetch file content related to routes, endpoints, handlers, api, controllers without truncation for better analysis and documentation
+      for (const filePath of analysis.selectedFiles) {
+        let content = await fetchFileContent(octokit, owner, repoName, filePath);
+        // if(/(routes|endpoints|handlers|api)\//i.test(filePath)){
+        if(filePath.includes('routes/') || filePath.includes('endpoints/') || filePath.includes('handlers/') || filePath.includes('api/') || filePath.includes('controller/')){
+          if(content){
+              routerSummary.push({
+                  path: filePath,
+                  content: content,
+                  truncated: false
+              });
+          }
+        }
+      }
 
 
         const filePromises = analysis.selectedFiles.map(filePath =>
@@ -202,7 +201,7 @@ console.log("commits:", commits);
     const map = new Map();
 
     const results = await Promise.all(
-        commits.map(commit =>
+        commits.map((commit: any) =>
             getChangedFilesWithContent(octokit, commit, owner, repoName)
         )
     );
@@ -247,11 +246,11 @@ console.log("commits:", commits);
 
 
 
-  console.log(" files with content:", filesWithContent.map(f => f.path).join(', '));
+  console.log(" files with content:", filesWithContent.map( (f: any) => f.path).join(', '));
 
-  filesWithContent.map(f => {
-    console.log(`===> ${f.path} : ${f.content}`)
-  })
+  // filesWithContent.map(f => {
+  //   console.log(`===> ${f.path} : ${f.content}`)
+  // })
 
   const normalizePath = (fromPath: string, importPath: string): string => {
   // Skip node_modules
@@ -279,6 +278,8 @@ console.log("commits:", commits);
 // JSON.stringify(filesWithContent)
   const graph : any[] = [];
 for (const file of filesWithContent) {
+  if (!file) continue;
+  
   const deps = extractImports(file.content);
   
   deps.forEach(dep => {
