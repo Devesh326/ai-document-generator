@@ -10,6 +10,7 @@ import { App } from '@octokit/app';
 import { createPullRequest } from "octokit-plugin-create-pull-request";
 import { Octokit } from "@octokit/core";
 import pLimit from "p-limit";
+import  {Worker} from 'bullmq';
 
 const limit = pLimit(5); // const limit = pLimit(5);
 
@@ -36,7 +37,8 @@ async function getOctokit(installationId: number): Promise<any> {
 // import { generateReadme } from '../services/llm';
 // import { createPullRequest } from '../services/github';
 
-docQueue.process(5, async (job) => {
+// docQueue.process(2, async (job) => {
+const worker = new Worker("doc-processing", async (job) => {
 //   const { owner, repo, repoId, commitSha, installationId } = job.data;
 
 const {ref, repoId, owner, repoName, installation_id, commits, repository, afterCommitSha } = job.data;
@@ -383,16 +385,27 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
     
     throw error; // Bull will retry
   }
+}, {
+  connection: {
+    // maxRetriesPerRequest: null,
+    host: process.env.REDIS_HOST || "127.0.0.1",
+    port: 6379,
+    username: "default",
+    password: process.env.REDIS_PASSWORD,
+    tls: {}
+  },
+  concurrency: 3,
+  lockDuration: 360000,    
 });
 
 
-docQueue.on('completed', (job) => {
+worker.on('completed', (job) => {
   console.log(`✅ Job completed for repo_id: ${job.data.repoId}`);
 }
 );
 
-docQueue.on('failed', (job, err) => {
-  console.error(`❌ Job failed for repo_id: ${job.data.repoId} - ${err.message}`);
+worker.on('failed', (job, err) => {
+  console.error(`❌ Job failed for repo_id: ${job?.data.repoId} - ${err.message}`);
 });
 
 console.log('👷 README worker started');
