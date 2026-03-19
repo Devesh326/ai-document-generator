@@ -2,8 +2,9 @@ import Queue from "bull";
 
 const docQueue = new Queue("doc-processing", {
   redis: {
-    host: "127.0.0.1",
-    port: 6379
+    host: "https://amazed-gull-77479.upstash.io",
+    port: 6379,
+    password: "gQAAAAAAAS6nAAIncDI4NGVlODNmZjAwNDQ0M2M3YjI5NjUwNzY1MTA4YzMyZHAyNzc0Nzk"
   },
   defaultJobOptions: {
     // ========================================
