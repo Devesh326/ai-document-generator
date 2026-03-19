@@ -30,11 +30,7 @@ async function getOctokit(installationId: number): Promise<any> {
   return octokit
 }
 
-
-// import { getOctokit } from '../services/github';
-// import { analyzeRepo } from '../analyzer';
-// import { generateReadme } from '../services/llm';
-// import { createPullRequest } from '../services/github';
+/* TODOS: Need to clean code */
 
 // docQueue.process(2, async (job) => {
 const worker = new Worker("doc-processing", async (job) => {
