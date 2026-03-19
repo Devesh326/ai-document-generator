@@ -32,13 +32,14 @@ const redisConfig = process.env.REDIS_URL
 // Create Bull Queue
 // ============================================================================
 
-const docQueue = new Queue("doc-processing",  process.env.REDIS_URL! ,{
-  // redis: {
-  //   host: process.env.REDIS_URL || "127.0.0.1",
-  //   port: 6379,
-  //   password: process.env.REDIS_PASSWORD || "UPSTASH_REDIS_PASSWORD",
-  //   tls: {}
-  // },
+const docQueue = new Queue("doc-processing", {
+  redis: {
+    host: "amazed-gull-77479.upstash.io",
+    port: 6379,
+    username: "default",
+    password: process.env.REDIS_PASSWORD,
+    tls: {}
+  },
   defaultJobOptions: {
     // ========================================
     // RETRY CONFIGURATION (Problem 1 Fix)
