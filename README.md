@@ -9,7 +9,7 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 *   **Dependency Analysis:** Automatically identifies project dependencies and summarizes key libraries and modules.
 *   **Automated Diagrams:** Generates Mermaid.js diagrams to visualize project structure and dependency graphs.
 *   **Webhook Integration:** Automatically triggers documentation updates via GitHub webhooks.
-*   **Queue Management:** Uses Redis and Bull to handle documentation generation tasks asynchronously with concurrent processing, ensuring high scalability and performance.
+*   **Queue Management:** Uses Redis and BullMQ to handle documentation generation tasks asynchronously with concurrent processing, ensuring high scalability and performance.
 *   **Incremental Updates:** Supports both initial `README.md` generation and updates to existing files while preserving custom content.
 
 ## Tech Stack
@@ -18,7 +18,7 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 *   **AI/LLM:** Google GenAI (Gemini SDK)
 *   **ORM:** Prisma
 *   **Database:** Redis
-*   **Queueing:** Bull
+*   **Queueing:** BullMQ
 *   **GitHub Integration:** Octokit
 
 ## Architecture
