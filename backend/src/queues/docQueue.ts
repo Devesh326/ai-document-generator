@@ -1,4 +1,5 @@
-import Queue from "bull";
+// import Queue from "bull";
+import { Queue } from "bullmq";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -34,9 +35,9 @@ const redisConfig = process.env.REDIS_URL
 
 
 const docQueue = new Queue("doc-processing", {
-  redis: {
+  connection: {
     // maxRetriesPerRequest: null,
-    host: "amazed-gull-77479.upstash.io",
+    host: process.env.REDIS_HOST || "127.0.0.1",
     port: 6379,
     username: "default",
     password: process.env.REDIS_PASSWORD,
@@ -57,18 +58,20 @@ const docQueue = new Queue("doc-processing", {
     // ========================================
     // TIMEOUT CONFIGURATION
     // ========================================
-    timeout: 300000,  // 5 minute timeout (LLM can be slow)
+    // timeout: 300000,  // 5 minute timeout (LLM can be slow)
   },
-  settings: {
-    // Lock jobs for 6 minutes (longer than timeout)
-    lockDuration: 360000,
+  // settings: {
+  //   // Lock jobs for 6 minutes (longer than timeout)
+  //   // lockDuration: 360000,
     
-    // Check for stalled jobs every minute
-    stalledInterval: 60000,
+  //   // Check for stalled jobs every minute
+  //   // stalledInterval: 60000,
     
-    // Max stalled check count before giving up
-    maxStalledCount: 2,
-  }
+  //   // Max stalled check count before giving up
+  //   // maxStalledCount: 2,
+
+  //   // guardInterval: 30000,
+  // }
 });
 
 // ============================================================================
