@@ -32,13 +32,12 @@ const redisConfig = process.env.REDIS_URL
 // Create Bull Queue
 // ============================================================================
 
-const docQueue = new Queue("doc-processing", process.env.REDIS_URL!, {
+const docQueue = new Queue("doc-processing", {
   redis: {
-    tls: {
-      rejectUnauthorized: false,  // Required for Upstash
-    },
-    enableOfflineQueue: false,
-    maxRetriesPerRequest: null,
+    host: process.env.REDIS_URL || "127.0.0.1",
+    port: 6379,
+    // password: process.env.REDIS_PASSWORD || "UPSTASH_REDIS_PASSWORD",
+    tls: {}
   },
   defaultJobOptions: {
     // ========================================
