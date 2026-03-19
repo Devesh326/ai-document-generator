@@ -26,6 +26,12 @@ RepoReadMe AI Generator is an automated service designed to analyze GitHub repos
 ```mermaid
 graph LR
   subgraph backend
+    backend_src_controllers_githubController --> backend_src_services_fileSelector
+    backend_src_controllers_githubController --> backend_src_services_analyzer
+    backend_src_controllers_githubController --> backend_src_queues_docQueue
+    backend_src_services_aiGenerator --> backend_src_controllers_githubController
+    backend_src_routes_aiRoute --> backend_src_services_aiGenerator
+    backend_src_routes_githubRoute --> backend_src_controllers_githubController
     backend_src_routes_adminRoute --> backend_src_queues_docQueue
     backend_src_app --> backend_src_routes_githubRoute
     backend_src_app --> backend_src_routes_aiRoute
