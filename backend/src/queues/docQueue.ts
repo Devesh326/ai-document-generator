@@ -32,6 +32,7 @@ const redisConfig = process.env.REDIS_URL
 // Create Bull Queue
 // ============================================================================
 
+
 const docQueue = new Queue("doc-processing", process.env.REDIS_URL!,{
   redis: {
     maxRetriesPerRequest: null,
