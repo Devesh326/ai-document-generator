@@ -46,8 +46,14 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
 `).join('\n');
 
   let prompt = '';
+
+  const isFlat = 
+    analysis.structure.backend.length === 0 &&
+    analysis.structure.frontend.length === 0 &&
+    analysis.structure.mobile.length === 0;
   
   if (type === 'initial' || !existingReadme) {
+
     
   // Generate dependency analysis summary
   const depAnalysis = generateDependencyAnalysis(dependencyGraph, files);
@@ -62,8 +68,19 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
 
     IMPORTANT: Output ONLY the README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the README" or "Based on the code". Start directly with the markdown content (# Title).
 
-REPOSITORY STRUCTURE:
+    REPOSITORY STRUCTURE:
+    ${isFlat ? `
+⚠️ THIS IS A FLAT/ROOT-LEVEL PROJECT
+
+All source files are in the repository root. There are NO backend/, frontend/, or mobile/ folders.
+
+DO NOT invent folder structure that doesn't exist.
+DO NOT create fake directories like "backend/", "frontend/", or "services/".
+
+Describe the actual files in the root directory.
+` : `
 ${JSON.stringify(analysis.structure, null, 2)}
+`}
 
 TECH STACK:
 ${JSON.stringify(analysis.metadata.techStack, null, 2)}
@@ -185,6 +202,14 @@ UPDATE INSTRUCTIONS:
 
 **1. Architecture Section:**
 
+${isFlat ? `
+⚠️ This is a FLAT/ROOT-LEVEL project - all files are in the repository root.
+
+- Keep the Architecture section simple
+- DO NOT add folders like "backend/", "frontend/" if they don't exist
+- If new files were added to root, mention them
+- If files were deleted, remove them from the file list
+` : `
 The README already has a complete architecture diagram showing all files.
 
 For the Mermaid diagram:
@@ -201,6 +226,7 @@ For the Mermaid diagram:
 For the folder structure description:
 - Update ONLY if new top-level folder appeared (workers/, cache/, etc.)
 - Otherwise keep as is
+`}
 
 **2. Features Section:**
 - Add features ONLY if explicitly shown in + lines

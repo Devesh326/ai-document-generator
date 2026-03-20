@@ -46,7 +46,7 @@ export async function analyzeRepo(
 }
 
 // ============================================================================
-// MONOREPO DETECTION - Enhanced for all patterns
+// MONOREPO DETECTION - Enhanced with flexible matching
 // ============================================================================
 
 function detectMonorepo(tree: GitHubTreeItem[]): boolean {
@@ -57,56 +57,103 @@ function detectMonorepo(tree: GitHubTreeItem[]): boolean {
     'nx.json', 
     'turbo.json',
     'rush.json',
-    'workspace.json',
-    'pnpm-workspace.yaml'
+    'workspace.json'
   ];
   
   if (tree.some(t => monorepoFiles.includes(t.path))) {
     return true;
   }
   
-  // Check for multiple package.json/requirements.txt (workspace pattern)
-  const packageJsonCount = tree.filter(t => t.path.endsWith('package.json')).length;
-  const requirementsCount = tree.filter(t => t.path.endsWith('requirements.txt')).length;
-  const goModCount = tree.filter(t => t.path.endsWith('go.mod')).length;
+  // ========================================
+  // Multiple dependency files in DIFFERENT directories
+  // ========================================
   
-  if (packageJsonCount > 2 || requirementsCount > 1 || goModCount > 1) {
+  const excludedDirs = ['examples', 'docs', 'test', 'tests', '.github', 'scripts', 'tools'];
+  
+  const getUniqueDirs = (filename: string): number => {
+    const dirs = tree
+      .filter(t => t.path.endsWith(filename))
+      .map(t => t.path.split('/').slice(0, -1).join('/'))
+      .filter(dir => dir !== '')
+      .filter(dir => {
+        const topLevel = dir.split('/')[0];
+        return !excludedDirs.includes(topLevel);
+      });
+    
+    return new Set(dirs).size;
+  };
+  
+  if (getUniqueDirs('package.json') >= 2) return true;
+  if (getUniqueDirs('requirements.txt') >= 2) return true;
+  if (getUniqueDirs('go.mod') >= 2) return true;
+  if (getUniqueDirs('Cargo.toml') >= 2) return true;
+  
+  // ========================================
+  // Flexible folder matching (top-level)
+  // ========================================
+  
+  const topLevelFolders = tree
+    .filter(t => t.type === 'tree')
+    .filter(t => !t.path.includes('/'))
+    .map(t => t.path.toLowerCase());
+  
+  const hasBackend = topLevelFolders.some(folder =>
+    /^(backend|server|api)/.test(folder) ||
+    /-(backend|server|api)$/.test(folder) ||
+    /^(backend|server|api|services)$/.test(folder)
+  );
+  
+  const hasFrontend = topLevelFolders.some(folder =>
+    /^(frontend|client|web|ui)/.test(folder) ||
+    /-(frontend|client|web|ui)$/.test(folder) ||
+    /^(webapp|website|portal|dashboard)/.test(folder)
+  );
+  
+  const hasMobile = topLevelFolders.some(folder =>
+    /^(mobile|android|ios)/.test(folder) ||
+    /-(mobile)$/.test(folder)
+  );
+  
+  // Check nested src structure
+  const nestedFolders = tree
+    .filter(t => t.type === 'tree')
+    .filter(t => t.path.startsWith('src/') && t.path.split('/').length === 2)
+    .map(t => t.path.split('/')[1].toLowerCase());
+  
+  const hasNestedBackend = nestedFolders.some(folder =>
+    /^(backend|server|api)/.test(folder)
+  );
+  
+  const hasNestedFrontend = nestedFolders.some(folder =>
+    /^(frontend|client|web)/.test(folder)
+  );
+  
+  const hasNestedMobile = nestedFolders.some(folder =>
+    /^(mobile|android|ios)/.test(folder)
+  );
+  
+  const backendExists = hasBackend || hasNestedBackend;
+  const frontendExists = hasFrontend || hasNestedFrontend;
+  const mobileExists = hasMobile || hasNestedMobile || tree.some(t =>
+    t.path.endsWith('AndroidManifest.xml') ||
+    t.path.endsWith('Info.plist') ||
+    t.path.endsWith('pubspec.yaml')
+  );
+  
+  if ((backendExists && frontendExists) || 
+      (backendExists && mobileExists) || 
+      (frontendExists && mobileExists)) {
     return true;
   }
   
-  // Check for explicit backend/frontend folders
-  const hasBackend = tree.some(t => 
-    t.path === 'backend' || 
-    t.path === 'server' || 
-    t.path === 'api' ||
-    t.path === 'services' ||
-    t.path === 'src/backend'
-  );
+  // ========================================
+  // Workspace-style folders
+  // ========================================
   
-  const hasFrontend = tree.some(t => 
-    t.path === 'frontend' || 
-    t.path === 'client' || 
-    t.path === 'web' ||
-    t.path === 'ui' ||
-    t.path === 'src/frontend'
-  );
-  
-  const hasMobile = tree.some(t =>
-    t.path === 'mobile' ||
-    t.path === 'app' ||
-    t.path === 'android' ||
-    t.path === 'ios'
-  );
-  
-  if ((hasBackend && hasFrontend) || (hasBackend && hasMobile) || (hasFrontend && hasMobile)) {
-    return true;
-  }
-  
-  // Check for workspace-style folders
-  const hasAppsFolder = tree.some(t => t.path.startsWith('apps/'));
-  const hasPackagesFolder = tree.some(t => t.path.startsWith('packages/'));
-  const hasServicesFolder = tree.some(t => t.path.startsWith('services/'));
-  const hasModulesFolder = tree.some(t => t.path.startsWith('modules/'));
+  const hasAppsFolder = tree.some(t => t.path.startsWith('apps/') && t.type === 'tree');
+  const hasPackagesFolder = tree.some(t => t.path.startsWith('packages/') && t.type === 'tree');
+  const hasServicesFolder = tree.some(t => t.path.startsWith('services/') && t.type === 'tree');
+  const hasModulesFolder = tree.some(t => t.path.startsWith('modules/') && t.type === 'tree');
   
   return hasAppsFolder || hasPackagesFolder || hasServicesFolder || hasModulesFolder;
 }
@@ -182,16 +229,13 @@ function categorizeStructure(tree: GitHubTreeItem[], isMonorepo: boolean) {
     }
   }
   
-  // If no structure detected, assume root is backend
-  if (structure.backend.length === 0 && structure.frontend.length === 0 && structure.mobile.length === 0) {
-    structure.backend.push('');
-  }
+  // Don't invent structure for flat projects - leave arrays empty
   
   return structure;
 }
 
 // ============================================================================
-// COMPREHENSIVE FOLDER CATEGORIZATION
+// COMPREHENSIVE FOLDER CATEGORIZATION - With flexible matching
 // ============================================================================
 
 function categorizeFolderComprehensive(
@@ -201,35 +245,36 @@ function categorizeFolderComprehensive(
   
   const folderName = folder.split('/').pop()!.toLowerCase();
   
-  // Backend patterns
-  const backendNames = [
-    'backend', 'server', 'api', 'services', 'service',
-    'core', 'domain', 'application', 'infrastructure', // DDD/Clean Architecture
-    'cmd', 'internal', 'pkg' // Go patterns
-  ];
+  // Backend patterns (flexible regex matching)
+  if (/^(backend|server|api)/.test(folderName) || 
+      /-(backend|server|api)$/.test(folderName) ||
+      /^(backend|server|api|services)$/.test(folderName)) {
+    return 'backend';
+  }
+  
+  // DDD/Clean Architecture patterns
+  if (/^(domain|application|infrastructure|cmd|internal|pkg)$/.test(folderName)) {
+    return 'backend';
+  }
   
   // Frontend patterns
-  const frontendNames = [
-    'frontend', 'client', 'web', 'ui', 'app', 'www',
-    'webapp', 'website', 'portal', 'dashboard'
-  ];
+  if (/^(frontend|client|web|ui)/.test(folderName) || 
+      /-(frontend|client|web|ui)$/.test(folderName) ||
+      /^(webapp|website|portal|dashboard)/.test(folderName)) {
+    return 'frontend';
+  }
   
   // Mobile patterns
-  const mobileNames = [
-    'mobile', 'android', 'ios', 'flutter', 'react-native',
-    'rn', 'native', 'app-mobile'
-  ];
+  if (/^(mobile|android|ios|flutter|native)/.test(folderName) || 
+      /-(mobile)$/.test(folderName) ||
+      /react-native|rn/.test(folderName)) {
+    return 'mobile';
+  }
   
-  // Shared/Common patterns
-  const sharedNames = [
-    'shared', 'common', 'lib', 'libs', 'packages', 'utils',
-    'helpers', 'core', 'types', 'models', 'constants'
-  ];
-  
-  if (backendNames.includes(folderName)) return 'backend';
-  if (frontendNames.includes(folderName)) return 'frontend';
-  if (mobileNames.includes(folderName)) return 'mobile';
-  if (sharedNames.includes(folderName)) return 'shared';
+  // Shared patterns
+  if (/^(shared|common|lib|libs|utils|helpers|types|models|constants|core)/.test(folderName)) {
+    return 'shared';
+  }
   
   // Analyze files inside folder
   const filesInFolder = tree.filter(t => 
@@ -615,7 +660,7 @@ function selectFiles(
   techStack: any
 ): string[] {
   const selected: string[] = [];
-  const maxFiles = 60; // Increased from 50
+  const maxFiles = 60;
   
   // Root configs
   const rootConfigs = tree
@@ -685,12 +730,12 @@ function selectFiles(
     
     selected.push(...entries);
     
-    // ALL route/controller files (no limit)
+    // Route/controller files (cap at 30)
     const routeFiles = backendFiles.filter(f =>
-      /(routes|controllers|endpoints|handlers|api|views)\//i.test(f.path) &&
+      /(routes|controllers|endpoints|handlers)\//i.test(f.path) &&
       /\.(js|ts|py|go|rs|java|rb|php)$/.test(f.path) &&
       !/\.(test|spec)\.(js|ts)$/.test(f.path)
-    ).map(f => f.path);
+    ).slice(0, 30).map(f => f.path);
     
     console.log(`📍 Found ${routeFiles.length} route files in ${backendFolder || 'root'}`);
     selected.push(...routeFiles);
@@ -699,7 +744,7 @@ function selectFiles(
     const keyFolders = [
       'services', 'models', 'config', 'middleware', 'utils',
       'repositories', 'domain', 'entities', 'dto', 'schemas',
-      'lib', 'pkg', 'internal' // Go patterns
+      'lib', 'pkg', 'internal'
     ];
     
     for (const folder of keyFolders) {
@@ -809,17 +854,17 @@ export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; 
   
   // Skip if only these files changed
   const trivialPatterns = [
-    /\.md$/,           // Markdown files
-    /\.txt$/,          // Text files
-    /LICENSE/,         // License
-    /\.github\//,      // GitHub configs
-    /\.vscode\//,      // Editor configs
-    /\.idea\//,        // IDE configs
-    /\.gitignore/,     // Git ignore
-    /\.editorconfig/,  // Editor config
-    /\.prettierrc/,    // Prettier
-    /\.eslintrc/,      // ESLint
-    /\.env\.example/,  // Example env files
+    /\.md$/,
+    /\.txt$/,
+    /LICENSE/,
+    /\.github\//,
+    /\.vscode\//,
+    /\.idea\//,
+    /\.gitignore/,
+    /\.editorconfig/,
+    /\.prettierrc/,
+    /\.eslintrc/,
+    /\.env\.example/,
   ];
   
   const meaningfulChanges = changedFiles.filter(file => 
@@ -859,20 +904,13 @@ export function shouldGenerateReadme(changedFiles: string[]): {files: string[]; 
     /pubspec\.lock$/,
     
     // ===== ENTRY POINTS =====
-    // Node.js/TypeScript
     /(index|app|server|main)\.(js|ts)$/,
-    // Python
     /(main|app|wsgi|asgi|manage)\.py$/,
-    // Go
     /main\.go$/,
     /cmd\/.*\.go$/,
-    // Java
     /.*Application\.java$/,
-    // Rust
     /src\/main\.rs$/,
-    // PHP
     /(index|artisan)\.php$/,
-    // Ruby
     /(config\.ru|application\.rb)$/,
     
     // ===== BACKEND DIRECTORIES =====
