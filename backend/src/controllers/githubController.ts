@@ -173,7 +173,7 @@ const repositoryGet = async (req: any, res: any) => {
 
 const githubWebhookHandler = async (req: any, res: any) => {
   const data = req.body;
-  console.log("Successfully received the push event", data);
+  console.log("Successfully received the push event");
   
     // need to check if the event triggered is a push event and if the branch is main, then only we will trigger the analysis
     if (data.commits && data.commits.length > 0 && data.ref === 'refs/heads/main') {

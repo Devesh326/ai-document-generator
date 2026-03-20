@@ -38,7 +38,7 @@ const worker = new Worker("doc-processing", async (job) => {
 const {ref, repoId, owner, repoName, installation_id, commits, repository, afterCommitSha } = job.data;
 let isFirstTime = false;
 console.log("Processing job for repo_id:", repoId);
-console.log("commits:", commits);
+// console.log("commits:", commits);
   
 //   console.log(`\n🔄 Processing ${owner}/${repo} @ ${commitSha.substring(0, 7)}`);
 //   // 1. Get or create repo record
