@@ -1,16 +1,15 @@
 # RepoReadMe AI Generator
 
-RepoReadMe AI Generator is an automated service designed to analyze GitHub repositories and generate comprehensive, professional `README.md` files using Google's Gemini AI. It streamlines the documentation process by automatically detecting tech stacks, repository structures, and key features.
+RepoReadMe AI Generator is an automated service designed to analyze GitHub repositories and generate comprehensive, professional `README.md` files using Google's Gemini AI. It streamlines the documentation process by automatically detecting tech stacks, repository structures, and key features to keep project documentation up-to-date.
 
 ## Features
 
-*   **Automated Analysis:** Scans repository file trees to identify project structure and technology stacks (e.g., TypeScript, Express, Prisma).
-*   **AI-Powered Writing:** Utilizes Google GenAI (Gemini) to generate context-aware documentation.
-*   **Dependency Analysis:** Automatically identifies project dependencies and summarizes key libraries and modules.
-*   **Automated Diagrams:** Generates Mermaid.js diagrams to visualize project structure and dependency graphs.
-*   **Webhook Integration:** Automatically triggers documentation updates via GitHub webhooks for all repository branches.
-*   **Queue Management:** Uses Redis and BullMQ to handle documentation generation tasks asynchronously with concurrent processing, including an admin interface for monitoring and retrying jobs.
-*   **Incremental Updates:** Supports both initial `README.md` generation and updates to existing files while preserving custom content.
+*   **Automated Analysis:** Scans repository file trees to identify project structure and technology stacks.
+*   **AI-Powered Documentation:** Utilizes Google Gemini AI to generate context-aware, professional project documentation.
+*   **Asynchronous Processing:** Leverages BullMQ and Redis to handle documentation generation tasks in the background for high performance.
+*   **GitHub Webhook Integration:** Automatically triggers documentation updates via GitHub webhooks whenever repository changes occur.
+*   **Admin Dashboard:** Provides an interface for monitoring queue status, retrying failed jobs, and managing background tasks.
+*   **Usage Tracking:** Monitors and enforces usage limits based on repository installations.
 
 ## Tech Stack
 
@@ -29,112 +28,89 @@ graph LR
     backend_src_controllers_githubController --> backend_src_services_fileSelector
     backend_src_controllers_githubController --> backend_src_services_analyzer
     backend_src_controllers_githubController --> backend_src_queues_docQueue
-    backend_src_services_aiGenerator --> backend_src_controllers_githubController
+    backend_src_routes_adminRoute --> backend_src_queues_docQueue
     backend_src_routes_aiRoute --> backend_src_services_aiGenerator
     backend_src_routes_githubRoute --> backend_src_controllers_githubController
-    backend_src_routes_adminRoute --> backend_src_queues_docQueue
-    backend_src_app --> backend_src_routes_githubRoute
-    backend_src_app --> backend_src_routes_aiRoute
-    backend_src_app --> backend_src_routes_adminRoute
-    backend_src_app --> backend_src_configs_redisConfig
+    backend_src_routes_usage --> backend_src_configs_redisConfig
+    backend_src_routes_usage --> backend_src_models_prisma
+    backend_src_services_aiGenerator --> backend_src_controllers_githubController
   end
 ```
 
-## Prerequisites
+## Installation
 
+### Prerequisites
 *   Node.js (v20+)
 *   Docker & Docker Compose
-*   Redis server (e.g., Upstash)
+*   Redis server
 *   PostgreSQL database
 *   Gemini API Key
 
-## Installation
+### Setup
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd backend
+   ```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd backend
-    ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+3. **Environment Variables:**
+   Create a `.env` file in the root directory:
+   ```env
+   DATABASE_URL="your_postgres_connection_string"
+   GEMINI_API_KEY="your_gemini_api_key"
+   REDIS_URL="redis://localhost:6379"
+   GITHUB_APP_ID="your_github_app_id"
+   ```
 
-3.  **Environment Variables:**
-    Create a `.env` file in the root directory and configure the following:
-    ```env
-    DATABASE_URL="your_database_connection_string"
-    GEMINI_API_KEY="your_google_ai_api_key"
-    REDIS_URL="redis://localhost:6379"
-    REDIS_PASSWORD="your_redis_password"
-    GITHUB_APP_ID="your_github_app_id"
-    GITHUB_PRIVATE_KEY_PATH="/path/to/your/private-key.pem"
-    ```
+4. **Run the application:**
+   ```bash
+   # Start the API and the background worker
+   npm run start
+   ```
 
-4.  **Running with Docker:**
-    ```bash
-    docker-compose up -d
-    ```
+## API Documentation
 
-5.  **Running Locally:**
-    *   Database Setup:
-        ```bash
-        npx prisma generate
-        npx prisma migrate dev
-        ```
-    *   Start the API server:
-        ```bash
-        npm run dev
-        ```
-    *   Start the background worker:
-        ```bash
-        npm run worker
-        ```
+### GitHub Integration
+*   **GET `/repository?owner=<owner>&repo=<repo>`**
+    Triggers an analysis and documentation generation process for the specified repository.
+*   **GET `/path`**
+    Returns the file structure tree of a repository.
+*   **POST `/postreceive`**
+    Webhook endpoint for GitHub to trigger automatic updates on repository changes.
 
-## Usage
-
-The application exposes REST endpoints to trigger repository analysis, documentation generation, and queue management:
-
-*   **Analyze Repository:** `GET /repository?owner=<owner>&repo=<repo>`
-    Triggers an analysis of the specified GitHub repository.
-*   **GitHub Webhook:** `POST /postreceive`
-    Endpoint configured for GitHub to send events. Processes repository changes automatically across all branches.
-*   **Path Analysis:** `GET /path`
-    Returns the file structure of a specific repository.
-*   **Queue Stats:** `GET /admin/queue/stats`
-    Returns current counts for waiting, active, completed, and failed jobs.
-*   **Retry Failed Jobs:** `POST /admin/queue/retry-failed`
+### Admin & Queue Management
+*   **GET `/admin/queue/stats`**
+    Retrieves current counts for waiting, active, completed, and failed background jobs.
+*   **POST `/admin/queue/retry-failed`**
     Attempts to re-process all failed jobs in the queue.
-*   **Clean Queue:** `POST /admin/queue/clean`
-    Removes old, processed jobs from the queue history.
-*   **List Failed Jobs:** `GET /admin/queue/failed`
-    Returns a detailed list of failed jobs and their error messages.
+*   **GET `/admin/queue/failed`**
+    Returns a detailed list of failed jobs, including error messages and attempt counts.
+*   **POST `/admin/queue/clean`**
+    Removes historical, completed jobs from the queue.
+
+### Usage & AI
+*   **GET `/usage/:installationId`**
+    Returns current usage statistics, tier information, and remaining generation limits for an installation.
+*   **GET `/ai`**
+    A test endpoint to verify connectivity with the Gemini AI service.
 
 ## Project Structure
 
-```text
-backend/
-├── src/
-│   ├── controllers/    # Request handlers for GitHub webhooks and API routes
-│   ├── models/         # Prisma schemas and interface definitions
-│   ├── queues/         # BullMQ queue configurations for background jobs
-│   ├── routes/         # Express route definitions
-│   ├── services/       # Core logic (AI generation, repo analysis, file selection)
-│   └── worker/         # Background worker logic for processing queues
-├── package.json        # Dependencies and scripts
-└── prisma/             # Database schema and migrations
-```
+The project follows a standard Node.js architecture where Express routes handle incoming API requests, a dedicated service layer encapsulates core business logic like repository analysis and AI generation, and Prisma manages database interactions. Background tasks are decoupled from the main request-response cycle and processed asynchronously via BullMQ workers.
 
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
-
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
-3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
-4.  Push to the branch (`git push origin feature/amazing-feature`).
-5.  Open a Pull Request.
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes.
+4. Push to the branch.
+5. Open a Pull Request.
 
 ## License
 
