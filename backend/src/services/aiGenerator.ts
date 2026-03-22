@@ -68,6 +68,8 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
 
     IMPORTANT: Output ONLY the README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the README" or "Based on the code". Start directly with the markdown content (# Title).
 
+${existingReadme ? ` If Readme Exists, go through it, if its sufficient, DO NOT create a new README, FURTHER DO NOT DRASTICALLY DELETE ANY USER CREATED README. ` : ` `} 
+
     REPOSITORY STRUCTURE:
     ${isFlat ? `
 ⚠️ THIS IS A FLAT/ROOT-LEVEL PROJECT
