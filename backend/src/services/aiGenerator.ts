@@ -138,6 +138,7 @@ ${mermaidDiagram ? '   - Include the provided mermaid diagram' : '   - Describe 
    ` : ''}
 
 7. **Project Structure**
+IMPORTANT: FOLLOW THE BELOW INSTRUCTION TO CREATE README.
 ${isFlat ? 
      `List the main files in the repository root:
    \`\`\`
@@ -169,7 +170,7 @@ ${isFlat ?
    - Keep it clean and readable`
    }
 
-8. **Contributions are Welcome!**
+8. **Contributing**
    - Basic guidelines
 
 9. **License**
