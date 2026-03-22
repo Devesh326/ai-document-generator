@@ -139,22 +139,37 @@ ${mermaidDiagram ? '   - Include the provided mermaid diagram' : '   - Describe 
 
 7. **Project Structure**
 ${isFlat ? 
-     `List the main files in root with 1-line descriptions.
-   Example:
-   - app.py - Main application entry point
-   - scrape.py - Web scraping utilities
-   - requirements.txt - Python dependencies` :
+     `List the main files in the repository root:
+   \`\`\`
+   ├── app.py
+   ├── scrape.py
+   ├── requirements.txt
+   └── README.md
+   \`\`\`
+   
+   Add a 1-line description below the tree explaining what each file does.` :
      
-     `Write 2-3 sentences describing the overall code organization. 
+     `Show the folder tree structure with brief inline comments.
    
-   DO NOT create detailed folder trees or bullet lists of every directory.
+   Format example:
+   \`\`\`
+   backend/
+   ├── src/
+   │   ├── controllers/    # Request handlers
+   │   ├── models/         # Prisma schemas
+   │   ├── services/       # Core logic
+   │   └── routes/         # API routes
+   └── package.json
+   \`\`\`
    
-   Example: "The project follows standard Node.js structure with Express routes handling API requests, a service layer for business logic, and Prisma managing database operations. Background jobs are processed via BullMQ workers."
-   
-   Keep it conversational and high-level.`
+   Rules:
+   - Use markdown code block with triple backticks
+   - Include inline comments with # (keep them SHORT - max 3-4 words)
+   - Show only main directories (not every file)
+   - Keep it clean and readable`
    }
 
-8. **Contributing**
+8. **Contributions are Welcome!**
    - Basic guidelines
 
 9. **License**
