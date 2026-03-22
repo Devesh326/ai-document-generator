@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import githubRouter from "./routes/githubRoute.js"
 import aiRouter from "./routes/aiRoute.js"
 import adminRouter from './routes/adminRoute.js'
+import rateLimitUsage from './routes/usage.js'
 import { closeRedis, getRedisClient } from "./configs/redisConfig.js";
 dotenv.config();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use("/github", githubRouter);
 app.use("/ai", aiRouter);
+app.use('/rate-limit', rateLimitUsage)
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

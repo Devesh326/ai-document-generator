@@ -174,6 +174,7 @@ const repositoryGet = async (req: any, res: any) => {
 const githubWebhookHandler = async (req: any, res: any) => {
   const data = req.body;
   console.log("Successfully received the push event");
+  let result;
   
     // need to check if the event triggered is a push event and if the branch is main, then only we will trigger the analysis
     if (data.commits && data.commits.length > 0 ) { // && data.ref === 'refs/heads/main'
@@ -186,7 +187,7 @@ const githubWebhookHandler = async (req: any, res: any) => {
       const afterCommitSha = data.after;
       const ref = data.ref
 
-      await docQueue.add("generate-readme",{
+      result = await docQueue.add("generate-readme",{
         ref,
         repoId,
         owner,
@@ -200,20 +201,45 @@ const githubWebhookHandler = async (req: any, res: any) => {
       // console.log(req.body);
       
     }
-    // res.status(200).send("Webhook received");
+    res.status(200).send("Webhook received");
 }
 
-// const pr = await octokit.request(`POST /repos/${owner}/${repoName}/pulls`, {
-//   owner,
-//   repo: repoName,
-//   title: 'README.md file generate',
-//   body: readme,
-//   head: ref,
-//   base: ref,
-//   headers: {
-//     'X-GitHub-Api-Version': '2022-11-28'
-//   }
-// })
+
+const createIssue = async (octokit: any, owner: string, repoName: string, rateLimitResult: any) : Promise<any> => {
+  try {
+    await octokit.request(`POST /repos/${owner}/${repoName}/issues`, {
+      owner: owner,
+      repo: repoName,
+      title: '📝 Documentation generation limit reached',
+      body: `
+      ## Monthly Limit Reached
+
+    Your free tier allows **50 documentation generations per month**.
+
+    You've used all 50 this month. Your limit resets on **${new Date(rateLimitResult.reset).toDateString()}**.
+
+    ### Options:
+
+    1. **Upgrade to Pro** - Get 500 generations/month
+      - [Upgrade now](https://your-site.com/pricing)
+
+    2. **Wait for reset** - Your limit resets in ${Math.ceil((rateLimitResult.reset - Date.now()) / (1000 * 60 * 60 * 24))} days
+
+    Recent changes to this repository will be documented when you upgrade or when your limit resets.
+        `,
+      labels: ['documentation', 'document-gen'],
+      milestone: 1,
+      headers: {
+        'X-GitHub-Api-Version': '2026-03-10'
+      }
+    })
+  }
+  catch (err) {
+    console.log(`Failed to create Issue for the repo: ${repoName}`, err);
+    
+  }
+  return null;
+}
 
 const createPullReq = async (octokit: any, owner: string, repoName: string, readme: string, ref: string, versionId: number) : Promise<any> => { 
   try {
@@ -407,4 +433,4 @@ export { githubRepoGet, repoTreeGet, repositoryGet,
   githubRepoTopLevelGet, repoPathGet, githubWebhookHandler,
   fetchFileContent, createPullReq, extractImports, 
   generateMermaidGraph, generateDependencyAnalysis, 
-  getChangedFilesWithContent};
+  getChangedFilesWithContent, createIssue};

@@ -2,7 +2,7 @@
 
 import {docQueue} from '../queues/docQueue.js';
 import prisma from '../models/prisma.js';
-import { createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, getChangedFilesWithContent, githubRepoTopLevelGet } from '../controllers/githubController.js';
+import { createIssue, createPullReq, extractImports, fetchFileContent, generateDependencyAnalysis, generateMermaidGraph, getChangedFilesWithContent, githubRepoTopLevelGet } from '../controllers/githubController.js';
 import { shouldGenerateReadme } from '../services/analyzer.js';
 import { generateReadme } from '../services/aiGenerator.js';
 import { App } from '@octokit/app';
@@ -17,6 +17,7 @@ const limit = pLimit(5); // const limit = pLimit(5);
 const MyOctokit = Octokit.plugin(createPullRequest);
 
 import dotenv from "dotenv";
+import { checkRateLimit } from '../configs/redisConfig.js';
 dotenv.config();
 
 const app = new App({
@@ -45,10 +46,33 @@ console.log("Processing job for repo_id:", repoId);
   let repoRecord = await prisma.repo.findUnique({
     where: { github_repo_id: repoId }
   });
+
   const octokit = await getOctokit(installation_id);
+
+  let user  = await prisma.user.findUnique({
+    where: { installation_id: installation_id }
+    });
   
   if (!repoRecord) {
     isFirstTime = true;
+
+    if(!user) {
+      user = await prisma.user.create({
+        data: {
+          installation_id: installation_id,
+          username: owner,
+          total_repos_registered: 1
+        }
+      });
+    }
+    else {
+      await prisma.user.update({
+        where: { installation_id: user.installation_id },
+        data: { total_repos_registered: user.total_repos_registered + 1 }
+      });
+    }
+
+
     repoRecord = await prisma.repo.create({
       data: {
         github_repo_id: repoId,
@@ -57,7 +81,26 @@ console.log("Processing job for repo_id:", repoId);
         installation_id: installation_id
       }
     });
-  } 
+  }
+  
+  // Determine tier (you can add a 'tier' field to User model later)
+  const tier = (user as any).tier || 'free';
+  
+  // ========================================
+  // Check Rate Limit
+  // ========================================
+  
+  const rateLimitResult = await checkRateLimit(installation_id, tier);
+  
+  if (!rateLimitResult.allowed) {
+    console.log(`❌ Rate limit exceeded for ${owner}`);
+    await createIssue(octokit, owner, repoName, rateLimitResult)
+    return;
+  }
+  
+  console.log(`✅ Rate limit OK. Remaining: ${rateLimitResult.remaining}/${rateLimitResult.limit}`);
+  
+
 //   else {
 //     // Update installation_id in case it has changed
 //     if (repoRecord.installation_id !== installation_id) {
@@ -360,6 +403,11 @@ if (existingReadmeContent && normalize(existingReadmeContent) === normalize(read
         last_readme_commit: pr.merge_commit_sha
       }
     });
+
+    await prisma.user.update({
+        where: { installation_id: user?.installation_id },
+        data: { total_readme_generated: user?.total_readme_generated ? user.total_readme_generated + 1 : 0 }
+      });
     
     console.log('✅ Done!\n');
 
