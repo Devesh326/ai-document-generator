@@ -44,7 +44,7 @@ export function closeRedis(): void {
 // ============================================================================
 
 const upstashRedis = new UpstashRedis({
-  url: process.env.REDIS_URL!,
+  url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN || '', // Optional: only needed for REST API
 });
 
