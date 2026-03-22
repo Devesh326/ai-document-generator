@@ -18,6 +18,8 @@
     "@octokit/app": "^16.1.2",
     "@octokit/core": "^6.1.0",
     "@prisma/client": "^5.8.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "bullmq": "^5.71.0",
     "concurrently": "^9.2.1",
     "dotenv": "^16.4.5",

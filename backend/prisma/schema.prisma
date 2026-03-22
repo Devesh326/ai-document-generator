@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Repo {
@@ -34,4 +35,16 @@ model ReadmeGeneration {
   completed_at DateTime?
   
   @@index([repo_id])
+}
+
+
+// User model to track total repositories and README generations
+model User {
+  id                Int       @id @default(autoincrement())
+  installation_id   BigInt    @unique
+  username          String    @db.VarChar(255) 
+  total_repos_registered Int       @default(0)
+  total_readme_generated Int       @default(0)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 }
