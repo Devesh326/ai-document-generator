@@ -68,7 +68,22 @@ ${f.content}${f.truncated ? '\n... (truncated)' : ''}
 
     IMPORTANT: Output ONLY the README content in markdown format. Do NOT include any preamble, explanations, or meta-commentary like "Here is the README" or "Based on the code". Start directly with the markdown content (# Title).
 
-${existingReadme ? ` If Readme Exists, go through it, if its sufficient, DO NOT create a new README, FURTHER DO NOT DRASTICALLY DELETE ANY USER CREATED README. ` : ` `} 
+// ${existingReadme ? ` If Readme Exists, go through it, if its sufficient, DO NOT create a new README, FURTHER DO NOT DRASTICALLY DELETE ANY USER CREATED README. ` : ` `} 
+${existingReadme ? ` 
+**ONLY update if:**
+- Tech stack is factually wrong or missing critical new dependencies
+- API endpoints are undocumented
+- Installation steps are broken
+
+**DO NOT:**
+- Rewrite or restructure
+- Change tone or style
+- Add unnecessary sections
+- Remove custom content
+- "Improve" what's already good
+
+**If in doubt, return the README unchanged.**
+` : ` `} 
 
     REPOSITORY STRUCTURE:
     ${isFlat ? `
@@ -142,10 +157,8 @@ IMPORTANT: FOLLOW THE BELOW INSTRUCTION TO CREATE README.
 ${isFlat ? 
      `List the main files in the repository root:
    \`\`\`
-   ├── app.py
-   ├── scrape.py
-   ├── requirements.txt
-   └── README.md
+   ├── app.py\
+   |
    \`\`\`
    
    Add a 1-line description below the tree explaining what each file does.` :
@@ -153,15 +166,11 @@ ${isFlat ?
      `Show the folder tree structure with brief inline comments.
    
    Format example:
-   \`\`\`
-   backend/
-   ├── src/
-   │   ├── controllers/    # Request handlers
-   │   ├── models/         # Prisma schemas
-   │   ├── services/       # Core logic
-   │   └── routes/         # API routes
-   └── package.json
-   \`\`\`
+    \`\`\`
+    src/
+    ├── controllers/    # API handlers
+    ├── models/         # DB schemas
+    \`\`\`
    
    Rules:
    - Use markdown code block with triple backticks
@@ -264,30 +273,39 @@ For the folder structure description:
 - Don't remove unless explicitly shown in - lines
 
 
-3. **Preserve everything else:**
-   - All custom content (badges, images, examples, links)
-   - User-written descriptions and explanations
-   - Architecture diagrams (unless clearly mentioned in diff files)
-   - Contributing guidelines, License, etc.
+## What to Preserve
 
-4. **Skip update if:**
-   - Changes are only bug fixes or refactoring
-   - Changes are internal implementation details
-   - No user-facing impact
+- All custom content (badges, images, links, videos)
+- User-written descriptions and explanations
+- Custom examples and tutorials
+- Contributing guidelines
+- License information
+- Tone and formatting style
 
-5. **Maintain style:**
-   - Keep the same tone and formatting
-   - Don't change the README structure
-   - Don't add unnecessary sections
+## When to Skip Update
 
+Skip updating if changes are:
+- Bug fixes only (no new features)
+- Code refactoring (same functionality)
+- Test file changes
+- Documentation comments
+- Internal implementation details
 
-   DECISION RULES:
+---
 
-- Bug fixes / refactoring / internal changes → Don't update
-- New user-facing capability → Update Features
-- New endpoint → Update API docs
-- New major folder → Update Architecture structure
-- New file in existing folder → Update Architecture diagram only
+# DECISION MATRIX
+
+| Change Type | Update? | What to Update |
+|------------|---------|----------------|
+| New file in existing folder | ✅ | Architecture diagram only |
+| New top-level folder | ✅ | Architecture diagram + structure description |
+| New API endpoint | ✅ | API Documentation |
+| New dependency | ✅ | Tech Stack + Installation |
+| New feature (user-facing) | ✅ | Features section |
+| Bug fix | ❌ | Nothing |
+| Refactoring | ❌ | Nothing |
+| Test changes | ❌ | Nothing |
+
 
 ---
 
